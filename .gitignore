@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+.env
+.env.*
+
+dist/
+artifacts/runs/*
+!artifacts/runs/.gitkeep
+
+# Competition dataset (covered by competition rules; never commit)
+data/
+
+# Adapter weights live outside git
+adapters/*/

@@ -1,0 +1,4 @@
+# LF everywhere so the submission archive is byte-identical on every OS.
+* text=auto eol=lf
+*.safetensors binary
+*.zip binary
