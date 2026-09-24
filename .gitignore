@@ -13,8 +13,11 @@ dist/*
 artifacts/runs/*
 !artifacts/runs/.gitkeep
 
-# Competition dataset (covered by competition rules; never commit)
+# Competition dataset and official artifacts (covered by competition rules; never commit).
+# docs/HUMAN_HANDOFF.md says what to put in external/competition/.
 data/
+external/
+kaggle.json
 
 # Adapter weights live outside git
 adapters/*/

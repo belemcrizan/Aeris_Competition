@@ -8,7 +8,7 @@
 # authority: level in the hierarchy (1 HARNESS_README, 2 sample_submission, 3 official
 #            schemas/eval code, 4 Kaggle pages, 5 datasets, 6 ADK, 7 our code, 8 our assumption)
 
-last_reviewed: "2026-09-24"
+last_reviewed: "2026-09-24 (phase 3)"
 
 gaps:
   # ------------------------------------------------------------- COMPLIANCE
@@ -19,21 +19,22 @@ gaps:
     authority: 1
     previous: BLOCKED
     action: Download the competition dataset after accepting the rules; diff every R-* row against it
-    evidence: docs/OFFICIAL_ARTIFACT_AUDIT.md (workspace, remote, PyPI and web searched; nothing found)
+    evidence: docs/OFFICIAL_ARTIFACT_AUDIT.md (workspace, remote, PyPI and web searched in phase 2; workspace plus Downloads/Documents/Desktop/OneDrive re-searched in phase 3, depth 6, for HARNESS_README*/sample_submission*/tasks.jsonl/eval_config*/gemma-4-developer*; no official files; only credential filenames, not opened; competition_bootstrap.py exits 3)
     test: "-"
     status: BLOCKED
     blocker: Kaggle login + rules acceptance (no credentials in this environment)
     resolution: All dependent rows stay BLOCKED/UNVERIFIED
     mandatory: true
+    human_action: Accept the rules and put the dataset in external/competition/ (HUMAN_HANDOFF.md steps 1-3), then run make competition-audit
   - id: C-02
     dimension: COMPLIANCE
     area: Official artifacts
     gap: sample_submission/ not available, so no diff against our agent.yaml
     authority: 2
     previous: BLOCKED
-    action: Write artifacts/audits/sample_submission_diff.md once the sample exists
-    evidence: docs/OFFICIAL_ARTIFACT_AUDIT.md
-    test: "-"
+    action: Write artifacts/audits/sample_submission_diff.md once the sample exists (automatic in competition_bootstrap.py)
+    evidence: docs/OFFICIAL_ARTIFACT_AUDIT.md; differ ready in aeris_comp/submission_diff.py
+    test: tests/test_competition_bootstrap.py (differ on synthetic samples only)
     status: BLOCKED
     blocker: Same as C-01
     resolution: "-"
@@ -314,7 +315,7 @@ gaps:
     resolution: Skills emit 11 types, the scorer emits grade_result
     mandatory: true
   - id: E-05
-    dimension: ENGINEERING
+    dimension: HARNESS
     area: Telemetry
     gap: Harness-only events (task_start, task_end, tool_call, file_read, edit, semantic_search, graph_expansion, submit_patch)
     authority: 1
@@ -411,11 +412,11 @@ gaps:
     authority: 7
     previous: IMPLEMENTED
     action: Add ADK job and docs --check
-    evidence: .github/workflows/ci.yml
-    test: GitHub Actions run on the PR
-    status: IMPLEMENTED
+    evidence: .github/workflows/ci.yml; GitHub Actions run 36044360482 on main 161ef7b (jobs check and adk-conformance both success)
+    test: GitHub Actions on every push and PR
+    status: CLOSED
     blocker: "-"
-    resolution: Becomes LOCALLY_TESTED/CLOSED when the PR run is green
+    resolution: Green on main after PR #2
     mandatory: true
   - id: E-13
     dimension: ENGINEERING
@@ -433,7 +434,7 @@ gaps:
 
   # ------------------------------------------------------------- EXPERIMENT
   - id: X-01
-    dimension: EXPERIMENT
+    dimension: HARNESS
     area: Harness
     gap: Real harness run of B0 on one task
     authority: 1
@@ -446,7 +447,7 @@ gaps:
     resolution: "-"
     mandatory: true
   - id: X-02
-    dimension: EXPERIMENT
+    dimension: HARNESS
     area: Harness
     gap: First PASS (research/results/FIRST_PASS.md)
     authority: 1
@@ -459,7 +460,7 @@ gaps:
     resolution: "-"
     mandatory: true
   - id: X-03
-    dimension: EXPERIMENT
+    dimension: BENCHMARK
     area: Benchmark
     gap: Smoke benchmark (research/results/smoke_b0.json/.md)
     authority: 1
@@ -472,7 +473,7 @@ gaps:
     resolution: "-"
     mandatory: true
   - id: X-04
-    dimension: EXPERIMENT
+    dimension: BENCHMARK
     area: Data split
     gap: research/results/data_split.json
     authority: 5
@@ -485,7 +486,7 @@ gaps:
     resolution: "-"
     mandatory: true
   - id: X-05
-    dimension: EXPERIMENT
+    dimension: BENCHMARK
     area: Scorer
     gap: Measured agreement of our scorer with official grades
     authority: 3
@@ -578,7 +579,7 @@ gaps:
 
   # --------------------------------------------------------------- RESEARCH
   - id: P-01
-    dimension: RESEARCH
+    dimension: PAPER
     area: Paper
     gap: Paper skeleton (11 sections) with marked placeholders
     authority: 7
@@ -591,7 +592,7 @@ gaps:
     resolution: Method, setup, limitations drafted; results sections are placeholders
     mandatory: true
   - id: P-02
-    dimension: RESEARCH
+    dimension: PAPER
     area: Paper
     gap: Tables and figures generated from real data
     authority: 7
@@ -617,7 +618,7 @@ gaps:
     resolution: No claim currently has experimental support; all are marked UNSUPPORTED
     mandatory: true
   - id: P-04
-    dimension: RESEARCH
+    dimension: PAPER
     area: Paper
     gap: Related work with verified citations
     authority: 7
@@ -630,7 +631,7 @@ gaps:
     resolution: "-"
     mandatory: true
   - id: P-05
-    dimension: RESEARCH
+    dimension: PAPER
     area: Paper
     gap: Paper readiness tracking against the 2026-11-12 deadline
     authority: 4
@@ -696,6 +697,7 @@ gaps:
     blocker: Kaggle account/credentials
     resolution: "-"
     mandatory: true
+    human_action: Upload dist/submission.zip on the Submit page after docs/RELEASE_CHECKLIST.md passes (HUMAN_HANDOFF.md step 6)
   - id: L-05
     dimension: RELEASE
     area: Release
@@ -709,3 +711,316 @@ gaps:
     blocker: "-"
     resolution: "-"
     mandatory: true
+  - id: L-06
+    dimension: RELEASE
+    area: Release
+    gap: Release manifest provenance (clean source commit; prompt, sampling and adapter hashes; nothing changed since)
+    authority: 7
+    previous: UNKNOWN
+    action: build_submission.py --all --require-clean, commit the manifest alone, verify with --check-release
+    evidence: dist/release_manifest.json (git.dirty false); scripts/build_submission.py::check_release
+    test: tests/test_competition_bootstrap.py (component hashes, --require-clean, check_release)
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: "-"
+    mandatory: true
+  - id: L-07
+    dimension: RELEASE
+    area: Release candidate
+    gap: RC1 passes every check including an official harness smoke run
+    authority: 1
+    previous: UNKNOWN
+    action: Run docs/RELEASE_CHECKLIST.md on the frozen variant; reject and rebuild on any failure
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-01, L-03
+    resolution: "-"
+    mandatory: true
+
+  # ---------------------------------------------------------------- HARNESS
+  - id: H-01
+    dimension: HARNESS
+    area: Artifact intake
+    gap: Detect official artifacts, audit them and print the next step without human interpretation
+    authority: 7
+    previous: UNKNOWN
+    action: scripts/competition_bootstrap.py (make competition-audit)
+    evidence: aeris_comp/competition_artifacts.py, aeris_comp/submission_diff.py; current run exits 3 (external/competition/ absent)
+    test: tests/test_competition_bootstrap.py (synthetic artifacts only)
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: Validates our validator and ADK checker against the official sample too
+    mandatory: true
+  - id: H-02
+    dimension: HARNESS
+    area: Human handoff
+    gap: Exact human steps to supply Kaggle artifacts without committing credentials
+    authority: 7
+    previous: UNKNOWN
+    action: Write docs/HUMAN_HANDOFF.md; gitignore external/ and kaggle.json
+    evidence: docs/HUMAN_HANDOFF.md; .gitignore
+    test: "-"
+    status: CLOSED
+    blocker: "-"
+    resolution: "-"
+    mandatory: true
+  - id: H-03
+    dimension: HARNESS
+    area: Run artifacts
+    gap: Run directory standard (manifest with hashes, events, patch, grade, timing, budget)
+    authority: 7
+    previous: UNKNOWN
+    action: Check the layout on the first real run; add the trace converter (E-05)
+    evidence: docs/EXPERIMENTS.md (Run directory standard); run_experiment.py prepare records component hashes and supports --require-clean
+    test: "-"
+    status: IMPLEMENTED
+    blocker: "-"
+    resolution: Harness-produced files wait for E-05
+    mandatory: true
+
+  # -------------------------------------------------------------- BENCHMARK
+  - id: B-01
+    dimension: BENCHMARK
+    area: Smoke selection
+    gap: Deterministic smoke-task selection that avoids easy-only picks and never touches held-out
+    authority: 7
+    previous: UNKNOWN
+    action: split.select_smoke; make_split.py --smoke N
+    evidence: aeris_comp/split.py::select_smoke
+    test: tests/test_competition_bootstrap.py::test_smoke_selection_is_deterministic_dev_only_and_spread
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: Seeded repository order, round-robin one task per repository
+    mandatory: true
+  - id: B-02
+    dimension: BENCHMARK
+    area: Baseline
+    gap: Canonical B0 baseline on DEV (PASS, Wilson CI, runtime mean/median/P90, tool calls, files, LOC, tests, retries, failures)
+    authority: 1
+    previous: UNKNOWN
+    action: Score B0 on the dev split; summarize
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-01, X-04
+    resolution: "-"
+    mandatory: true
+  - id: B-03
+    dimension: BENCHMARK
+    area: Failure analysis
+    gap: research/results/b0_failure_analysis.md ranking failure classes by frequency
+    authority: 1
+    previous: UNKNOWN
+    action: Label every B0 failure (primary + secondary) from traces; rank
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: B-02
+    resolution: The ranking decides where engineering effort goes before B1
+    mandatory: true
+
+  # ------------------------------------------------------------ EXPERIMENT (phase 3)
+  - id: X-12
+    dimension: EXPERIMENT
+    area: Robustness
+    gap: At least 3 repetitions of B0, the best intermediate variant, FULL and the final candidate
+    authority: 1
+    previous: UNKNOWN
+    action: Repeat runs; report the PASS distribution
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-06
+    resolution: "-"
+    mandatory: false
+  - id: X-13
+    dimension: EXPERIMENT
+    area: Localization oracle
+    gap: Pipeline issue -> retrieved -> graph-reached -> read -> edited -> gold files, to separate retrieval from reasoning failures
+    authority: 1
+    previous: UNKNOWN
+    action: Build from converted traces and gold patches
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: E-05
+    resolution: "-"
+    mandatory: false
+
+  # ----------------------------------------------------------- OPTIMIZATION
+  - id: O-01
+    dimension: OPTIMIZATION
+    area: Budget
+    gap: Real per-task budget profile (elapsed, tool, model, test, graph, semantic, retry time)
+    authority: 1
+    previous: UNKNOWN
+    action: Extract from harness traces
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-01, E-05
+    resolution: "-"
+    mandatory: true
+  - id: O-02
+    dimension: OPTIMIZATION
+    area: Budget
+    gap: NORMAL / CONSERVATIVE / CRITICAL thresholds calibrated on measured consumption
+    authority: 1
+    previous: UNKNOWN
+    action: Replace the provisional thresholds in docs/BUDGET_POLICY.md with dev-split values
+    evidence: docs/BUDGET_POLICY.md (provisional)
+    test: tests/test_ledger.py
+    status: BLOCKED
+    blocker: O-01
+    resolution: "-"
+    mandatory: true
+  - id: O-03
+    dimension: OPTIMIZATION
+    area: Loop prevention
+    gap: Repeated failure signatures detected and retries bounded
+    authority: 7
+    previous: IMPLEMENTED
+    action: Keep; measure the effect in B5 vs B4
+    evidence: testing skill (seen count, retry event), ledger retry limit
+    test: tests/test_testing_skill.py::test_repeated_signature_detection, tests/test_ledger.py::test_retry_limit_and_repeated_failures
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: Effect on PASS unmeasured (X-06)
+    mandatory: true
+  - id: O-04
+    dimension: OPTIMIZATION
+    area: Early stopping
+    gap: When continuing a task stops paying off (PASS per execution hour)
+    authority: 1
+    previous: UNKNOWN
+    action: Study on dev traces
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-06
+    resolution: "-"
+    mandatory: false
+  - id: O-05
+    dimension: OPTIMIZATION
+    area: Context
+    gap: Compaction experiment (does the issue, hypothesis, evidence and budget state survive?)
+    authority: 1
+    previous: UNKNOWN
+    action: Force or observe compaction in the harness
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: C-15
+    resolution: "-"
+    mandatory: false
+  - id: O-06
+    dimension: OPTIMIZATION
+    area: Context
+    gap: Duplicate reads, searches, graph calls and oversized outputs measured
+    authority: 1
+    previous: UNKNOWN
+    action: Count from converted traces; deduplicate only if it matters
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: E-05
+    resolution: "-"
+    mandatory: false
+  - id: O-07
+    dimension: OPTIMIZATION
+    area: Prompt
+    gap: Compact vs full prompt ablation
+    authority: 1
+    previous: UNKNOWN
+    action: Only if B0-B5 traces show prompt-driven failures
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-06
+    resolution: "-"
+    mandatory: false
+  - id: O-08
+    dimension: OPTIMIZATION
+    area: Sampling
+    gap: Small temperature / top_p / top_k grid on DEV, frozen before held-out
+    authority: 1
+    previous: UNKNOWN
+    action: Verify supported fields first (C-16), then a small grid
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: C-16, X-06
+    resolution: "-"
+    mandatory: false
+
+  # --------------------------------------------------------------- RESEARCH (phase 3)
+  - id: R-01
+    dimension: RESEARCH
+    area: Hypotheses
+    gap: H1-H6 tested with their refutation criteria
+    authority: 1
+    previous: UNKNOWN
+    action: Evaluate after X-06 and X-07
+    evidence: research/hypothesis.md (criteria only)
+    test: "-"
+    status: BLOCKED
+    blocker: X-06, X-07
+    resolution: "-"
+    mandatory: true
+  - id: R-02
+    dimension: RESEARCH
+    area: Analysis
+    gap: Component contribution map, failure-evolution matrix and Pareto frontier
+    authority: 1
+    previous: UNKNOWN
+    action: Generate from run summaries
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-07
+    resolution: "-"
+    mandatory: true
+  - id: R-03
+    dimension: RESEARCH
+    area: Statistics
+    gap: Wilson intervals and exact paired McNemar tests
+    authority: 7
+    previous: IMPLEMENTED
+    action: Keep exact-value tests
+    evidence: aeris_comp/metrics.py
+    test: tests/test_scoring_and_metrics.py::test_wilson_and_paired_comparison
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: "-"
+    mandatory: true
+
+  # ------------------------------------------------------------------ PAPER
+  - id: P-06
+    dimension: PAPER
+    area: Paper
+    gap: Results, ablations and failure-analysis sections populated with real evidence
+    authority: 1
+    previous: UNKNOWN
+    action: Fill from generated tables only
+    evidence: research/paper/ (placeholders)
+    test: "-"
+    status: BLOCKED
+    blocker: X-06, X-07
+    resolution: "-"
+    mandatory: true
+
+  # ------------------------------------------------------------ ENGINEERING (phase 3)
+  - id: E-14
+    dimension: ENGINEERING
+    area: Compute
+    gap: Responsibility boundaries between local, Kaggle/harness and optional GCP compute
+    authority: 7
+    previous: UNKNOWN
+    action: Write docs/COMPUTE_STRATEGY.md
+    evidence: docs/COMPUTE_STRATEGY.md
+    test: "-"
+    status: CLOSED
+    blocker: "-"
+    resolution: No GCP use; no network dependency in the agent
+    mandatory: false

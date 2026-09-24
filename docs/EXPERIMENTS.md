@@ -24,8 +24,12 @@ B6 (adapter) is not defined: no adapter exists and none is justified yet (see `a
 ## Workflow
 
 ```bash
-# 1. Freeze: commit first, so the manifest records a clean git SHA.
-python scripts/run_experiment.py prepare --variant B0 --notes "first baseline"
+# 0. Once: official artifacts in external/competition/ (docs/HUMAN_HANDOFF.md), then
+python scripts/competition_bootstrap.py                   # audit + frozen split
+python scripts/make_split.py --tasks <tasks.jsonl> --smoke 8   # deterministic dev-only smoke set
+
+# 1. Freeze: commit first; --require-clean refuses a dirty tree.
+python scripts/run_experiment.py prepare --variant B0 --require-clean --notes "first baseline"
 #    -> artifacts/runs/<run_id>/{submission.zip, manifest.json}
 
 # 2. Run the agent with the competition harness (HARNESS_README.md, local CLI) on a fixed
@@ -40,6 +44,21 @@ python scripts/run_experiment.py score --run-dir artifacts/runs/<run_id> \
 python scripts/run_experiment.py summarize artifacts/runs/<run_id>
 python scripts/run_experiment.py compare artifacts/runs/<run_B0> artifacts/runs/<run_B1>
 ```
+
+## Run directory standard
+
+Every real run lives in `artifacts/runs/<run_id>/` (gitignored; summaries are copied to `research/results/` when frozen). Files marked *harness* wait for the trace format (gap E-05); none is ever hand-written.
+
+| File | Producer | Content |
+| --- | --- | --- |
+| `manifest.json` | `prepare` | variant, components, tools, skills, adapter, git commit and dirty flag, submission SHA-256, per-component hashes (agent.yaml, every prompt file, sampling, adapters) |
+| `submission.zip` | `prepare` | the exact archive that was run |
+| `records.jsonl`, `summary.json` | `score` | one scored record per task; aggregate metrics |
+| `events.jsonl` | `score`, skills, *harness* | telemetry in the schema of docs/TELEMETRY.md |
+| `tool_calls.jsonl`, `model_events.jsonl`, `timing.json`, `budget.json` | *harness* trace converter | per-call tool and model events, time and budget consumption |
+| `patch.diff`, `tests.json`, `grade.json`, `failure.json` | *harness* + `score` | final patch, tests run, official grade, primary and secondary failure labels |
+
+No secrets, environment dumps or full repository copies are stored; large command outputs are truncated at the source by the skills.
 
 ## Run records
 

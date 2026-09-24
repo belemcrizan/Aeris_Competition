@@ -28,7 +28,7 @@ STATUSES = (
     "HARNESS_TESTED", "MEASURED", "REFUTED", "NOT_APPLICABLE", "CLOSED",
 )  # fmt: skip
 CLOSED = {"VERIFIED", "LOCALLY_TESTED", "HARNESS_TESTED", "MEASURED", "REFUTED", "NOT_APPLICABLE", "CLOSED"}
-DIMENSIONS = ("COMPLIANCE", "ENGINEERING", "EXPERIMENT", "RESEARCH", "RELEASE")
+DIMENSIONS = ("COMPLIANCE", "HARNESS", "ENGINEERING", "BENCHMARK", "EXPERIMENT", "OPTIMIZATION", "RESEARCH", "PAPER", "RELEASE")
 FIELDS = (
     "id", "dimension", "area", "gap", "authority", "previous", "action",
     "evidence", "test", "status", "blocker", "resolution", "mandatory",
@@ -56,6 +56,8 @@ def load_ledger(path: Path = LEDGER) -> dict:
             raise LedgerError(f"{gap['id']}: unknown dimension {gap['dimension']!r}")
         if gap["status"] == "BLOCKED" and gap["blocker"] in ("", "-"):
             raise LedgerError(f"{gap['id']}: BLOCKED needs a blocker")
+        if gap.get("human_action") and gap["status"] != "BLOCKED":
+            raise LedgerError(f"{gap['id']}: human_action is only meaningful while BLOCKED")
     return data
 
 
@@ -140,7 +142,14 @@ def render_status(data: dict) -> str:
         d = stats([g for g in gaps if g["dimension"] == dimension])
         out.append(f"| {dimension} | {d['total']} | {d['closed']} | {d['open']} | {d['blocked']} | {d['pct_verifiable']} | {d['pct_all']} |\n")
     out.append(f"| **All** | {s['total']} | {s['closed']} | {s['open']} | {s['blocked']} | {s['pct_verifiable']} | {s['pct_all']} |\n\n")
-    out.append("## Mandatory blocked items\n\n")
+    human = [g for g in gaps if g.get("human_action")]
+    out.append("## Blockers that need a human\n\n")
+    out.append("These cannot be automated (Kaggle login, rules acceptance, upload). Steps: [HUMAN_HANDOFF.md](HUMAN_HANDOFF.md). Everything else that is blocked depends on them.\n\n")
+    for g in human:
+        out.append(f"- {g['id']} ({g['dimension']}): {g['gap']}. Action: {g['human_action']}.\n")
+    if not human:
+        out.append("None.\n")
+    out.append("\n## Mandatory blocked items\n\n")
     for g in mandatory_blocked:
         out.append(f"- {g['id']} ({g['dimension']}): {g['gap']}. Blocked by: {g['blocker']}.\n")
     open_items = [g for g in gaps if g["status"] in {"IMPLEMENTED", "UNKNOWN"}]

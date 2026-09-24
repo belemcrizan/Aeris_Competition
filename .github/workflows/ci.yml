@@ -19,6 +19,13 @@ jobs:
       - run: python -m pytest -m local_integration
       - run: python scripts/build_submission.py --check-sync
       - run: python scripts/generate_docs.py --check
+      - name: competition-audit
+        run: |
+          set +e
+          python scripts/competition_bootstrap.py
+          code=$?
+          if [ "$code" -eq 3 ]; then echo "official artifacts absent (expected); see docs/HUMAN_HANDOFF.md"; exit 0; fi
+          exit $code
       - run: python scripts/build_submission.py --all --strict
       - run: python scripts/build_submission.py --check-manifest
       - run: python scripts/validate_submission.py dist/submission.zip --strict

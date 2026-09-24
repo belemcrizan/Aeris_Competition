@@ -1,10 +1,10 @@
 # Official artifact audit
 
-Date: 2026-09-24. Branch: `phase2-gap-closure`.
+Date: 2026-09-24. First audit on branch `phase2-gap-closure`; re-run on `phase3-empirical-readiness`.
 
 ## Result
 
-No official competition artifact is available to this project. `artifacts/audits/sample_submission_diff.md` is not written, because there is no sample to diff against. Every requirement that depends on these artifacts stays BLOCKED or UNVERIFIED in [COMPETITION_REQUIREMENTS.md](COMPETITION_REQUIREMENTS.md) and [GAP_CLOSURE.md](GAP_CLOSURE.md).
+No official competition artifact is available to this project. The phase 3 re-run searched again (below) and found none. `python scripts/competition_bootstrap.py` exits 3 (BLOCKED): `external/competition/` does not exist. `artifacts/audits/sample_submission_diff.md` is not written, because there is no sample to diff against. Every requirement that depends on these artifacts stays BLOCKED or UNVERIFIED in [COMPETITION_REQUIREMENTS.md](COMPETITION_REQUIREMENTS.md) and [GAP_CLOSURE.md](GAP_CLOSURE.md).
 
 The closest authority we could run is Google ADK itself (level 6). Its results are recorded below and in `artifacts/audits/adk_conformance.json`.
 
@@ -18,6 +18,7 @@ The closest authority we could run is Google ADK itself (level 6). Its results a
 | Competition dataset (5): tasks, snapshots, graphs, embeddings | Kaggle, which needs a login and rules acceptance | No: no Kaggle credentials or CLI configured here |
 | Kaggle Overview and Data pages (4) | Public web pages | Yes: already sources S1 and S2 |
 | Google ADK (6) | PyPI `google-adk==2.9.2`, installed in an isolated `.venv-adk` | Yes |
+| Any of the above, re-run in phase 3 | Workspace, plus the user's Downloads, Documents, Desktop and OneDrive folders (depth 6), looking for `HARNESS_README*`, `sample_submission*`, `tasks.jsonl`, `eval_config*` and `*gemma-4-developer*` | No. The only hit was an unrelated `kaggle.json` credential file from 2025, which was **not** opened or used (see [HUMAN_HANDOFF.md](HUMAN_HANDOFF.md)) |
 
 Nothing competition-provided was modified: there was nothing to modify.
 
@@ -41,7 +42,12 @@ ADK ranks below the harness README and the sample submission. Each finding below
 
 ## How to redo this audit when access is granted
 
-1. Accept the competition rules on Kaggle, then download the dataset into `data/` (gitignored).
-2. Diff `sample_submission/agent.yaml` against `submission/agent.yaml` and write `artifacts/audits/sample_submission_diff.md`.
-3. Re-check every row of [COMPETITION_REQUIREMENTS.md](COMPETITION_REQUIREMENTS.md) marked UNVERIFIED or BLOCKED against `HARNESS_README.md`; update `docs/gaps.yaml` and run `python scripts/generate_docs.py`.
+1. Put the artifacts in `external/competition/` (gitignored), as described in [HUMAN_HANDOFF.md](HUMAN_HANDOFF.md).
+2. Run `python scripts/competition_bootstrap.py`. It does the mechanical part:
+   - an inventory with hashes only (`artifacts/audits/competition_inventory.json`);
+   - which open questions HARNESS_README mentions (`harness_readme_mentions.json`);
+   - a structural and semantic diff of B0 and FULL against the sample, where each aspect is MATCH, COMPATIBLE_EXTENSION, INCOMPATIBLE or UNKNOWN (`artifacts/audits/sample_submission_diff.md`, code in `aeris_comp/submission_diff.py`);
+   - our validator and ADK checker run on the official sample (an ERROR there means our rule is stricter than authority 2 and must be relaxed);
+   - creation or verification of the frozen split.
+3. Fix every INCOMPATIBLE finding and add a regression test for it. Re-check every row of [COMPETITION_REQUIREMENTS.md](COMPETITION_REQUIREMENTS.md) marked UNVERIFIED or BLOCKED against `HARNESS_README.md`; update `docs/gaps.yaml` and run `python scripts/generate_docs.py`.
 4. If the README gives a validator or schema, add it as an `official_harness` test and make it the first check in `validate_submission.py`.

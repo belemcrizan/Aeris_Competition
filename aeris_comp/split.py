@@ -64,6 +64,41 @@ def make_split(tasks: list[dict], seed: int = DEFAULT_SEED, dev_fraction: float 
     return split
 
 
+def select_smoke(tasks: list[dict], split: dict, n: int, seed: int = DEFAULT_SEED) -> dict:
+    """``n`` dev tasks taken round-robin across repositories in a seeded order.
+
+    Never draws from ``heldout``. Round-robin spreads the smoke set over repositories
+    instead of letting one large repository (or its easiest tasks) dominate.
+    """
+    dev = set(split["dev"])
+    by_repo: dict[str, list[str]] = defaultdict(list)
+    for task in tasks:
+        if str(task["instance_id"]) in dev:
+            by_repo[repo_of(task)].append(str(task["instance_id"]))
+    rng = random.Random(f"{seed}:smoke")
+    repos = sorted(by_repo)
+    rng.shuffle(repos)
+    queues = {}
+    for repo in repos:
+        members = sorted(by_repo[repo])
+        random.Random(f"{seed}:smoke:{repo}").shuffle(members)
+        queues[repo] = members
+    chosen: list[tuple[str, str]] = []
+    while len(chosen) < n and any(queues.values()):
+        for repo in repos:
+            if queues[repo] and len(chosen) < n:
+                chosen.append((queues[repo].pop(0), repo))
+    return {
+        "schema": "aeris-smoke-selection/1",
+        "method": "dev split only; seeded repository order; round-robin one task per repository",
+        "seed": seed,
+        "split_sha256": split.get("split_sha256"),
+        "n": len(chosen),
+        "task_ids": [t for t, _ in chosen],
+        "repos": {t: r for t, r in chosen},
+    }
+
+
 def verify_split(split: dict, tasks: list[dict]) -> list[str]:
     """Problems that would make ``split`` unusable for ``tasks``; empty means OK."""
     problems = []
