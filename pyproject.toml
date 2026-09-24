@@ -12,7 +12,11 @@ parquet = ["pyarrow>=15"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q -p no:cacheprovider"
-markers = ["harness: needs the real competition harness (none exist yet)"]
+markers = [
+    "unit: pure-Python test, no subprocesses (UNIT)",
+    "local_integration: spawns git/pytest or builds archives locally (LOCAL_INTEGRATION)",
+    "official_harness: needs the real competition harness; always skipped until it is available (OFFICIAL_HARNESS)",
+]
 
 [tool.ruff]
 line-length = 140

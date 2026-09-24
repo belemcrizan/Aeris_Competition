@@ -80,9 +80,12 @@ def test_unknown_field_rejected(tmp_path):
     assert "UNKNOWN_FIELD" in validate_tree(tmp_path).codes()
 
 
-def test_duplicate_yaml_key_rejected(tmp_path):
+def test_duplicate_yaml_key_is_policy_warning(tmp_path):
+    # PyYAML (and so ADK) silently keeps the last value, so this is not officially invalid.
     minimal(tmp_path, f"model: {MODEL}\n")
-    assert "YAML_PARSE" in validate_tree(tmp_path).codes()
+    report = validate_tree(tmp_path)
+    assert "DUPLICATE_KEY" in {i.code for i in report.warnings}
+    assert report.ok and report.release_ok
 
 
 @pytest.mark.parametrize(
@@ -171,9 +174,11 @@ def test_skill_manifest_checks(tmp_path):
     write(tmp_path, "skills/noname/SKILL.md", "---\ndescription: x\n---\nbody\n")
     write(tmp_path, "skills/good/SKILL.md", "---\nname: good\ndescription: ok\n---\nbody\n")
     write(tmp_path, "skills/good/scripts/broken.py", "def f(:\n")
-    codes = [i.code for i in validate_tree(tmp_path).errors]
-    for code in ("MISSING_SKILL_MANIFEST", "SKILL_NO_FRONTMATTER", "SKILL_MISSING_NAME", "SCRIPT_SYNTAX"):
+    report = validate_tree(tmp_path)
+    codes = [i.code for i in report.errors]
+    for code in ("MISSING_SKILL_MANIFEST", "SKILL_NO_FRONTMATTER", "SKILL_MISSING_NAME"):
         assert code in codes
+    assert "SCRIPT_SYNTAX" in {i.code for i in report.blockers}
 
 
 def test_adk_state_placeholder_in_instruction(tmp_path):

@@ -1,0 +1,438 @@
+{
+  "schema": "aeris-release-manifest/1",
+  "model": "gemma-4-31b-it-qat-w4a16-ct",
+  "default_variant": "FULL",
+  "git": {
+    "commit": "8b30a1b9e681f7bc846b96211168228653c17aa8",
+    "dirty": true
+  },
+  "python": "3.13.3",
+  "variants": [
+    {
+      "variant": "ABL_no_feedback",
+      "archive": "dist/ABL_no_feedback/submission.zip",
+      "sha256": "317ec3a280293b26d717bd2ae93c5f8cf47677b1ac10169931e6c6dcf17a35c2",
+      "content_sha256": "52fd0f3601b3bbaa5c3ce19cfeab33d757ed0b1afa498fb04587ea1715fcb400",
+      "bytes": 20633,
+      "tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status",
+        "search_similar_code",
+        "get_code_neighbors",
+        "get_code_subgraph"
+      ],
+      "prompt_modules": [
+        "core",
+        "skills",
+        "retrieval",
+        "graph",
+        "hypotheses",
+        "uncertainty",
+        "review"
+      ],
+      "skills": [
+        "navigation",
+        "ledger",
+        "review"
+      ],
+      "validator": {
+        "result": "VALID",
+        "errors": 0,
+        "warnings": 0,
+        "info": 0
+      }
+    },
+    {
+      "variant": "ABL_no_graph",
+      "archive": "dist/ABL_no_graph/submission.zip",
+      "sha256": "0e79ee145d609bc2fe398c7234801411de7b73b00673e51ee715c41403d7ea8f",
+      "content_sha256": "e98c7c731289eab1e56e148c6eb31312823e695d8384e25a7f328f505424ce3b",
+      "bytes": 24960,
+      "tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status",
+        "search_similar_code"
+      ],
+      "prompt_modules": [
+        "core",
+        "skills",
+        "retrieval",
+        "hypotheses",
+        "uncertainty",
+        "feedback",
+        "review"
+      ],
+      "skills": [
+        "navigation",
+        "ledger",
+        "testing",
+        "review"
+      ],
+      "validator": {
+        "result": "VALID",
+        "errors": 0,
+        "warnings": 0,
+        "info": 0
+      }
+    },
+    {
+      "variant": "ABL_no_hypotheses",
+      "archive": "dist/ABL_no_hypotheses/submission.zip",
+      "sha256": "41aaf1623a0e81f7be9afed421dd29a97c0506305f6f39485bb13d402b3b7891",
+      "content_sha256": "fb7fe4606ce2538663fc9e47e63c4b929e8a507840415e5baa93493f0346bb2a",
+      "bytes": 19425,
+      "tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status",
+        "search_similar_code",
+        "get_code_neighbors",
+        "get_code_subgraph"
+      ],
+      "prompt_modules": [
+        "core",
+        "skills",
+        "retrieval",
+        "graph",
+        "feedback",
+        "review"
+      ],
+      "skills": [
+        "navigation",
+        "testing",
+        "review"
+      ],
+      "validator": {
+        "result": "VALID",
+        "errors": 0,
+        "warnings": 0,
+        "info": 0
+      }
+    },
+    {
+      "variant": "ABL_no_retrieval",
+      "archive": "dist/ABL_no_retrieval/submission.zip",
+      "sha256": "a291370d8987651d9ec7fc0f9ff4e56d9ed63b5774939f74a866dcf8918b613c",
+      "content_sha256": "ca22d4a95dd01b442d6f1ad0d2638de65523ae69dcbe0b6c536b63067a3a260f",
+      "bytes": 25105,
+      "tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status",
+        "get_code_neighbors",
+        "get_code_subgraph"
+      ],
+      "prompt_modules": [
+        "core",
+        "skills",
+        "graph",
+        "hypotheses",
+        "uncertainty",
+        "feedback",
+        "review"
+      ],
+      "skills": [
+        "navigation",
+        "ledger",
+        "testing",
+        "review"
+      ],
+      "validator": {
+        "result": "VALID",
+        "errors": 0,
+        "warnings": 0,
+        "info": 0
+      }
+    },
+    {
+      "variant": "ABL_no_uncertainty",
+      "archive": "dist/ABL_no_uncertainty/submission.zip",
+      "sha256": "b7ded7f04d27505bcd82a8f65d7f3b58c344f8d65f67568427b6732336c089e7",
+      "content_sha256": "815a0d80812bcb08054ef708ea5636db8a9b4179a1d7e5e7fb1ce9cedbdd33b0",
+      "bytes": 25113,
+      "tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status",
+        "search_similar_code",
+        "get_code_neighbors",
+        "get_code_subgraph"
+      ],
+      "prompt_modules": [
+        "core",
+        "skills",
+        "retrieval",
+        "graph",
+        "hypotheses",
+        "feedback",
+        "review"
+      ],
+      "skills": [
+        "navigation",
+        "ledger",
+        "testing",
+        "review"
+      ],
+      "validator": {
+        "result": "VALID",
+        "errors": 0,
+        "warnings": 0,
+        "info": 0
+      }
+    },
+    {
+      "variant": "B0",
+      "archive": "dist/B0/submission.zip",
+      "sha256": "417f5fdf532133e2364fe9a6eeacde9664200e5419186fb6e38e7971bc0ffaf1",
+      "content_sha256": "8a3a0a43c33c33c0813905631998ec68fc3b5cf84465bdc1cac7be79f6b4d983",
+      "bytes": 3322,
+      "tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status"
+      ],
+      "prompt_modules": [
+        "core"
+      ],
+      "skills": [],
+      "validator": {
+        "result": "VALID",
+        "errors": 0,
+        "warnings": 0,
+        "info": 0
+      }
+    },
+    {
+      "variant": "B1",
+      "archive": "dist/B1/submission.zip",
+      "sha256": "c1f623966dceaca867ae12f1bce48b00a70f65149b4516add78193d4b43936f5",
+      "content_sha256": "e7334f124ca2bb4a6b27946ad4fe98354b5e95090ec4f37316934788099225e9",
+      "bytes": 9180,
+      "tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status",
+        "search_similar_code"
+      ],
+      "prompt_modules": [
+        "core",
+        "skills",
+        "retrieval"
+      ],
+      "skills": [
+        "navigation"
+      ],
+      "validator": {
+        "result": "VALID",
+        "errors": 0,
+        "warnings": 0,
+        "info": 0
+      }
+    },
+    {
+      "variant": "B2",
+      "archive": "dist/B2/submission.zip",
+      "sha256": "16ce2573d53152f2094875e17e488e5abb23f5519c731caefd21716afef4cb6e",
+      "content_sha256": "94d784d6588996646c54061b274289b2dcffdf8e74c32dfb5967e67a70927faa",
+      "bytes": 9744,
+      "tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status",
+        "search_similar_code",
+        "get_code_neighbors",
+        "get_code_subgraph"
+      ],
+      "prompt_modules": [
+        "core",
+        "skills",
+        "retrieval",
+        "graph"
+      ],
+      "skills": [
+        "navigation"
+      ],
+      "validator": {
+        "result": "VALID",
+        "errors": 0,
+        "warnings": 0,
+        "info": 0
+      }
+    },
+    {
+      "variant": "B3",
+      "archive": "dist/B3/submission.zip",
+      "sha256": "40605b3d8002ac526bd632a6a8900935fb67a0e6a84fd89936645ad5f43aac62",
+      "content_sha256": "42c803265a899922740ef98fe8f6205b5642179e47b337de0aa598519bf503c8",
+      "bytes": 15458,
+      "tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status",
+        "search_similar_code",
+        "get_code_neighbors",
+        "get_code_subgraph"
+      ],
+      "prompt_modules": [
+        "core",
+        "skills",
+        "retrieval",
+        "graph",
+        "hypotheses"
+      ],
+      "skills": [
+        "navigation",
+        "ledger"
+      ],
+      "validator": {
+        "result": "VALID",
+        "errors": 0,
+        "warnings": 0,
+        "info": 0
+      }
+    },
+    {
+      "variant": "B4",
+      "archive": "dist/B4/submission.zip",
+      "sha256": "8b02bf36cc068d5e54fed0c0520117a4a53a6199ed8565fbd72f2fe3eb0860f4",
+      "content_sha256": "427e675b9f2bf4b776fe6009beda3e55c116ec43768d24cc263827e6a6e8bf23",
+      "bytes": 15879,
+      "tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status",
+        "search_similar_code",
+        "get_code_neighbors",
+        "get_code_subgraph"
+      ],
+      "prompt_modules": [
+        "core",
+        "skills",
+        "retrieval",
+        "graph",
+        "hypotheses",
+        "uncertainty"
+      ],
+      "skills": [
+        "navigation",
+        "ledger"
+      ],
+      "validator": {
+        "result": "VALID",
+        "errors": 0,
+        "warnings": 0,
+        "info": 0
+      }
+    },
+    {
+      "variant": "B5",
+      "archive": "dist/B5/submission.zip",
+      "sha256": "fb90a9aa4651a7b87a576617a63270e76a16da7853fd54b022ffc0187b8ca37d",
+      "content_sha256": "a5b464863d51a73d37869fcea8d9ac4010e46b5d5d94542c1556f624f251a72c",
+      "bytes": 20780,
+      "tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status",
+        "search_similar_code",
+        "get_code_neighbors",
+        "get_code_subgraph"
+      ],
+      "prompt_modules": [
+        "core",
+        "skills",
+        "retrieval",
+        "graph",
+        "hypotheses",
+        "uncertainty",
+        "feedback"
+      ],
+      "skills": [
+        "navigation",
+        "ledger",
+        "testing"
+      ],
+      "validator": {
+        "result": "VALID",
+        "errors": 0,
+        "warnings": 0,
+        "info": 0
+      }
+    },
+    {
+      "variant": "FULL",
+      "archive": "dist/submission.zip",
+      "sha256": "97ce0c562f2c9fd75dbba7334120c1d637c1441ffe60a95b9bca68a5ad42df82",
+      "content_sha256": "10b785190b235d4d5073e13ca716d271a5e50cc29ce6bceb13676f946ae68c40",
+      "bytes": 25525,
+      "tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status",
+        "search_similar_code",
+        "get_code_neighbors",
+        "get_code_subgraph"
+      ],
+      "prompt_modules": [
+        "core",
+        "skills",
+        "retrieval",
+        "graph",
+        "hypotheses",
+        "uncertainty",
+        "feedback",
+        "review"
+      ],
+      "skills": [
+        "navigation",
+        "ledger",
+        "testing",
+        "review"
+      ],
+      "validator": {
+        "result": "VALID",
+        "errors": 0,
+        "warnings": 0,
+        "info": 0
+      }
+    }
+  ]
+}

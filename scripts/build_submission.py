@@ -11,8 +11,12 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
+import platform
+import subprocess
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
@@ -33,24 +37,76 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build(variant_id: str, out: Path, strict: bool = False) -> int:
+def content_sha256(path: Path) -> str:
+    """Hash of entry names, modes and uncompressed bytes; independent of the zlib build."""
+    digest = hashlib.sha256()
+    with zipfile.ZipFile(path) as archive:
+        for info in sorted(archive.infolist(), key=lambda i: i.filename):
+            digest.update(f"{info.filename}\0{info.external_attr >> 16:o}\0".encode())
+            digest.update(hashlib.sha256(archive.read(info)).digest())
+    return digest.hexdigest()
+
+
+def build(variant_id: str, out: Path, strict: bool = False, manifest: list[dict] | None = None) -> int:
     variant = V.load_variant(variant_id)
     with tempfile.TemporaryDirectory(prefix="aeris_stage_") as tmp:
         stage = Path(tmp) / "submission"
         resolved = V.stage(variant, stage)
         tree_report = validate_tree(stage)
-        if not tree_report.ok:
+        if not tree_report.release_ok:
             print(tree_report.format())
-            print("build aborted: staged tree is invalid", file=sys.stderr)
+            print("build aborted: staged tree is invalid or blocked by policy", file=sys.stderr)
             return 1
         V.write_zip(stage, out)
     report = validate_zip(out)
     print(report.format())
     print(f"variant={variant.id} tools={list(resolved.tools)} modules={list(resolved.prompt_modules)} skills={list(resolved.skills)}")
-    print(f"archive={out} sha256={sha256(out)}")
-    if not report.ok or (strict and report.warnings):
+    digest = sha256(out)
+    print(f"archive={out} sha256={digest}")
+    if manifest is not None:
+        manifest.append(
+            {
+                "variant": variant.id,
+                "archive": out.relative_to(V.REPO_ROOT).as_posix() if out.is_relative_to(V.REPO_ROOT) else str(out),
+                "sha256": digest,
+                "content_sha256": content_sha256(out),
+                "bytes": out.stat().st_size,
+                "tools": list(resolved.tools),
+                "prompt_modules": list(resolved.prompt_modules),
+                "skills": list(resolved.skills),
+                "validator": {
+                    "result": "VALID" if report.release_ok else "INVALID",
+                    "errors": len(report.errors),
+                    "warnings": len(report.warnings),
+                    "info": len(report.infos),
+                },
+            }
+        )
+    if not report.release_ok or (strict and report.warnings):
         return 1
     return 0
+
+
+def git_state() -> dict:
+    def run(*args: str) -> str:
+        proc = subprocess.run(["git", *args], cwd=V.REPO_ROOT, capture_output=True, text=True)
+        return proc.stdout.strip() if proc.returncode == 0 else ""
+
+    return {"commit": run("rev-parse", "HEAD") or None, "dirty": bool(run("status", "--porcelain"))}
+
+
+def write_manifest(entries: list[dict], path: Path) -> None:
+    data = {
+        "schema": "aeris-release-manifest/1",
+        "model": V.MODEL,
+        "default_variant": V.DEFAULT_VARIANT,
+        "git": git_state(),
+        "python": platform.python_version(),
+        "variants": sorted(entries, key=lambda e: e["variant"]),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    print(f"manifest={path}")
 
 
 def sync(check_only: bool) -> int:
@@ -75,6 +131,30 @@ def sync(check_only: bool) -> int:
     return 0
 
 
+def check_manifest(path: Path) -> int:
+    committed = {v["variant"]: v for v in json.loads(path.read_text(encoding="utf-8"))["variants"]}
+    entries: list[dict] = []
+    with tempfile.TemporaryDirectory(prefix="aeris_manifest_") as tmp:
+        for variant_id in V.list_variants():
+            if build(variant_id, Path(tmp) / variant_id / "submission.zip", manifest=entries) != 0:
+                return 1
+    problems = []
+    for entry in entries:
+        old = committed.pop(entry["variant"], None)
+        if old is None:
+            problems.append(f"{entry['variant']}: missing from manifest")
+        elif old.get("content_sha256") != entry["content_sha256"]:
+            problems.append(f"{entry['variant']}: content changed since the manifest was written")
+    problems += [f"{name}: in manifest but no longer a variant" for name in committed]
+    for problem in problems:
+        print(f"MANIFEST: {problem}", file=sys.stderr)
+    if problems:
+        print("run python scripts/build_submission.py --all and commit dist/release_manifest.json", file=sys.stderr)
+        return 1
+    print(f"manifest matches {len(entries)} rebuilt variants")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--variant", default=V.DEFAULT_VARIANT, help=f"one of {V.list_variants()}")
@@ -83,12 +163,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sync", action="store_true")
     parser.add_argument("--check-sync", action="store_true")
     parser.add_argument("--all", action="store_true", help="build every variant into dist/<variant>/")
+    parser.add_argument(
+        "--check-manifest",
+        action="store_true",
+        help="rebuild every variant in a temp dir and compare content hashes with dist/release_manifest.json",
+    )
     args = parser.parse_args(argv)
     try:
         if args.sync or args.check_sync:
             return sync(check_only=args.check_sync)
+        if args.check_manifest:
+            return check_manifest(V.REPO_ROOT / "dist" / "release_manifest.json")
         if args.all:
-            return max(build(v, default_out(v), args.strict) for v in V.list_variants())
+            entries: list[dict] = []
+            code = max(build(v, default_out(v), args.strict, entries) for v in V.list_variants())
+            write_manifest(entries, V.REPO_ROOT / "dist" / "release_manifest.json")
+            return code
         return build(args.variant, args.out or default_out(args.variant), args.strict)
     except V.VariantError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

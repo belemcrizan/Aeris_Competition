@@ -99,7 +99,7 @@ def test_state_persists_and_is_compact(state_dir, capsys):
     assert len(state["claims"][0]) == ledger.MAX_TEXT
     assert not (state_dir / "events.jsonl").exists()
     run(capsys, "add", "H1", "--target", "a", "--weight", "1", "--claim", "x")
-    assert json.loads((state_dir / "events.jsonl").read_text().splitlines()[-1])["event"] == "hypothesis_created"
+    assert json.loads((state_dir / "events.jsonl").read_text().splitlines()[-1])["event_type"] == "hypothesis_created"
 
 
 def test_single_string_argument_is_split(state_dir, capsys):

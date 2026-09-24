@@ -1,7 +1,7 @@
 PYTHON ?= python
 VARIANT ?= FULL
 
-.PHONY: setup lint test validate-config package package-all verify-submission sync baseline check
+.PHONY: setup lint test test-unit test-integration validate-config package package-all verify-submission sync docs adk-conformance baseline check
 
 setup:
 	$(PYTHON) -m pip install -r requirements-dev.txt
@@ -12,18 +12,33 @@ lint:
 test:
 	$(PYTHON) -m pytest
 
+test-unit:
+	$(PYTHON) -m pytest -m unit
+
+test-integration:
+	$(PYTHON) -m pytest -m local_integration
+
 sync:
 	$(PYTHON) scripts/build_submission.py --sync
 
+docs:
+	$(PYTHON) scripts/generate_docs.py
+
 validate-config:
 	$(PYTHON) scripts/build_submission.py --check-sync
+	$(PYTHON) scripts/generate_docs.py --check
 	$(PYTHON) scripts/validate_submission.py submission --strict
+
+# Needs: pip install google-adk==2.9.2
+adk-conformance: package
+	$(PYTHON) scripts/adk_conformance.py dist/submission.zip --out artifacts/audits/adk_conformance.json
 
 package:
 	$(PYTHON) scripts/build_submission.py --variant $(VARIANT) --strict
 
 package-all:
 	$(PYTHON) scripts/build_submission.py --all --strict
+	$(PYTHON) scripts/build_submission.py --check-manifest
 
 verify-submission:
 	$(PYTHON) scripts/validate_submission.py dist/submission.zip --strict

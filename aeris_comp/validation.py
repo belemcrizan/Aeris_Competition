@@ -1,9 +1,15 @@
 """Static validation of a submission directory or ``submission.zip``.
 
-The checks encode verified competition rules (see docs/COMPETITION_REQUIREMENTS.md) plus
-defensive checks for failure modes that would silently cost tasks (for example ADK state
-placeholders in instructions). Rules whose harness behaviour is unverified produce
-warnings instead of errors.
+Every issue code has a fixed level and basis in :data:`CATALOG`:
+
+* ERROR: the submission is invalid under an OFFICIAL rule (competition README) or
+  would be rejected by ADK's own parser/loader (basis ADK).
+* WARNING: risky, unverified against the harness, or OUR policy (basis POLICY).
+  ``blocking`` policy warnings (secrets, credential files, junk) fail the build even
+  though the harness would accept the archive.
+* INFO: harmless observations.
+
+See docs/VALIDATOR.md for the full table and the evidence behind each basis.
 """
 
 from __future__ import annotations
@@ -26,6 +32,93 @@ from .yaml_include import DuplicateKeyError, IncludeRef, load_yaml
 
 ERROR = "ERROR"
 WARNING = "WARNING"
+INFO = "INFO"
+
+OFFICIAL = "OFFICIAL"
+ADK = "ADK"
+POLICY = "POLICY"
+UNVERIFIED = "UNVERIFIED"
+
+
+@dataclass(frozen=True)
+class Rule:
+    level: str
+    basis: str
+    blocking: bool = False
+
+
+CATALOG: dict[str, Rule] = {
+    # archive / layout (official: agent.yaml at root, relative includes, no traversal or symlinks)
+    "BAD_ZIP": Rule(ERROR, OFFICIAL),
+    "NOT_A_DIRECTORY": Rule(ERROR, OFFICIAL),
+    "MISSING_AGENT_YAML": Rule(ERROR, OFFICIAL),
+    "BACKSLASH_PATH": Rule(ERROR, OFFICIAL),
+    "ABSOLUTE_PATH": Rule(ERROR, OFFICIAL),
+    "PATH_TRAVERSAL": Rule(ERROR, OFFICIAL),
+    "SYMLINK": Rule(ERROR, OFFICIAL),
+    "EMPTY_PATH": Rule(ERROR, OFFICIAL),
+    "MISSING_INCLUDE": Rule(ERROR, OFFICIAL),
+    "INCLUDE_NOT_FILE": Rule(ERROR, OFFICIAL),
+    "DUPLICATE_ENTRY": Rule(ERROR, OFFICIAL),
+    "ARCHIVE_TOO_LARGE": Rule(WARNING, POLICY, blocking=True),
+    "UNEXPECTED_ROOT_ENTRY": Rule(INFO, POLICY),
+    # YAML / ADK agent config (LlmAgentConfig has extra="forbid")
+    "YAML_PARSE": Rule(ERROR, ADK),
+    "NOT_UTF8": Rule(ERROR, ADK),
+    "DUPLICATE_KEY": Rule(WARNING, POLICY),
+    "BAD_TYPE": Rule(ERROR, ADK),
+    "UNKNOWN_FIELD": Rule(ERROR, ADK),
+    "UNSUPPORTED_AGENT_CLASS": Rule(ERROR, ADK),
+    "MISSING_NAME": Rule(ERROR, ADK),
+    "BAD_NAME": Rule(ERROR, ADK),
+    "BAD_TOOL": Rule(ERROR, ADK),
+    "BAD_SUB_AGENT": Rule(ERROR, ADK),
+    "ADK_STATE_PLACEHOLDER": Rule(ERROR, ADK),
+    "CODE_REFERENCE": Rule(WARNING, POLICY, blocking=True),
+    "WORKFLOW_AGENT": Rule(WARNING, UNVERIFIED),
+    "UNKNOWN_SAMPLING_FIELD": Rule(WARNING, UNVERIFIED),
+    "AGENT_TOOL_SPELLING": Rule(WARNING, UNVERIFIED),
+    "TOOL_ARGS": Rule(WARNING, UNVERIFIED),
+    # competition model / tools / adapters
+    "MISSING_MODEL": Rule(ERROR, OFFICIAL),
+    "UNSUPPORTED_MODEL": Rule(ERROR, OFFICIAL),
+    "UNKNOWN_TOOL": Rule(ERROR, OFFICIAL),
+    "BAD_ADAPTER_NAME": Rule(ERROR, OFFICIAL),
+    "MISSING_ADAPTER": Rule(ERROR, OFFICIAL),
+    "ADAPTER_MISSING_FILE": Rule(ERROR, OFFICIAL),
+    "ADAPTER_CONFIG_JSON": Rule(ERROR, OFFICIAL),
+    "ADAPTER_NOT_LORA": Rule(ERROR, OFFICIAL),
+    "ADAPTER_BAD_SAFETENSORS": Rule(ERROR, OFFICIAL),
+    "ADAPTER_BASE_MODEL": Rule(WARNING, UNVERIFIED),
+    "UNREFERENCED_ADAPTER": Rule(INFO, POLICY),
+    # instructions (ADK accepts empty or missing instructions)
+    "NO_INSTRUCTION": Rule(WARNING, POLICY),
+    "EMPTY_INSTRUCTION": Rule(WARNING, POLICY),
+    "PROMPT_MENTIONS_DISABLED_TOOL": Rule(WARNING, POLICY),
+    # skills (official: SKILL.md with name; ADK loader: description, name format, dir match)
+    "SKILL_NOT_DIR": Rule(WARNING, POLICY),
+    "MISSING_SKILL_MANIFEST": Rule(ERROR, OFFICIAL),
+    "SKILL_NO_FRONTMATTER": Rule(ERROR, ADK),
+    "SKILL_FRONTMATTER_PARSE": Rule(ERROR, ADK),
+    "SKILL_MISSING_NAME": Rule(ERROR, OFFICIAL),
+    "SKILL_NAME_MISMATCH": Rule(ERROR, ADK),
+    "SKILL_NAME_FORMAT": Rule(ERROR, ADK),
+    "SKILL_NAME_SNAKE_CASE": Rule(WARNING, ADK),
+    "SKILL_MISSING_DESCRIPTION": Rule(ERROR, ADK),
+    "SKILL_FIELD_TOO_LONG": Rule(ERROR, ADK),
+    "SKILL_UNKNOWN_FRONTMATTER": Rule(WARNING, ADK),
+    "SKILL_UNSUPPORTED_SCRIPT": Rule(WARNING, ADK),
+    "SCRIPT_SYNTAX": Rule(WARNING, POLICY, blocking=True),
+    "SCRIPT_NETWORK_IMPORT": Rule(WARNING, POLICY),
+    # hygiene / security
+    "FORBIDDEN_FILE": Rule(WARNING, POLICY, blocking=True),
+    "POSSIBLE_SECRET": Rule(WARNING, POLICY, blocking=True),
+    "JUNK_FILE": Rule(WARNING, POLICY, blocking=True),
+    "LARGE_FILE": Rule(WARNING, POLICY),
+}
+
+SKILL_FRONTMATTER_KEYS = {"name", "description", "license", "compatibility", "allowed-tools", "allowed_tools", "metadata"}
+SKILL_SCRIPT_SUFFIXES = {".py", ".sh", ".bash"}
 
 MAX_NON_ADAPTER_FILE_BYTES = 5 * 1024 * 1024
 MAX_TOTAL_UNCOMPRESSED_BYTES = 8 * 1024**3
@@ -50,6 +143,7 @@ NETWORK_IMPORTS = re.compile(
     re.MULTILINE,
 )
 SKILL_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+SKILL_NAME_SNAKE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 TEXT_SUFFIXES = {".md", ".yaml", ".yml", ".json", ".py", ".sh", ".txt", ".toml", ".cfg", ".ini"}
 
 
@@ -59,10 +153,13 @@ class Issue:
     code: str
     message: str
     path: str = ""
+    basis: str = POLICY
+    blocking: bool = False
 
     def format(self) -> str:
         where = f" [{self.path}]" if self.path else ""
-        return f"{self.level:7} {self.code}{where}: {self.message}"
+        tag = f"{self.basis},BLOCKING" if self.blocking else self.basis
+        return f"{self.level:7} {self.code} ({tag}){where}: {self.message}"
 
 
 @dataclass
@@ -73,11 +170,11 @@ class Report:
     adapters: set[str] = field(default_factory=set)
     skills: list[str] = field(default_factory=list)
 
-    def error(self, code: str, message: str, path: str = "") -> None:
-        self.issues.append(Issue(ERROR, code, message, path))
+    def add(self, code: str, message: str, path: str = "") -> None:
+        rule = CATALOG[code]
+        self.issues.append(Issue(rule.level, code, message, path, rule.basis, rule.blocking))
 
-    def warn(self, code: str, message: str, path: str = "") -> None:
-        self.issues.append(Issue(WARNING, code, message, path))
+    error = warn = info = add
 
     @property
     def errors(self) -> list[Issue]:
@@ -88,19 +185,38 @@ class Report:
         return [i for i in self.issues if i.level == WARNING]
 
     @property
+    def infos(self) -> list[Issue]:
+        return [i for i in self.issues if i.level == INFO]
+
+    @property
+    def blockers(self) -> list[Issue]:
+        return [i for i in self.issues if i.blocking]
+
+    @property
     def ok(self) -> bool:
+        """No official or ADK error: the harness/ADK is expected to accept it."""
         return not self.errors
+
+    @property
+    def release_ok(self) -> bool:
+        """Also passes our blocking policy checks; required by the builder."""
+        return self.ok and not self.blockers
 
     def codes(self) -> set[str]:
         return {i.code for i in self.issues}
 
     def format(self) -> str:
-        lines = [i.format() for i in self.issues]
+        order = {ERROR: 0, WARNING: 1, INFO: 2}
+        lines = [i.format() for i in sorted(self.issues, key=lambda i: order[i.level])]
         lines.append(
             f"agents={len(self.agents)} tools={sorted(self.tools)} adapters={sorted(self.adapters)} "
             f"skills={self.skills}"
         )
-        lines.append(f"RESULT: {'VALID' if self.ok else 'INVALID'} ({len(self.errors)} errors, {len(self.warnings)} warnings)")
+        verdict = "VALID" if self.release_ok else ("POLICY_BLOCKED" if self.ok else "INVALID")
+        lines.append(
+            f"RESULT: {verdict} ({len(self.errors)} errors, {len(self.warnings)} warnings "
+            f"[{len(self.blockers)} blocking], {len(self.infos)} info)"
+        )
         return "\n".join(lines)
 
 
@@ -156,8 +272,13 @@ class _TreeValidator:
 
     def _load_yaml(self, rel: str) -> Any:
         try:
-            return load_yaml((self.root / rel).read_text(encoding="utf-8"))
-        except (yaml.YAMLError, DuplicateKeyError) as exc:
+            text = (self.root / rel).read_text(encoding="utf-8")
+            try:
+                return load_yaml(text)
+            except DuplicateKeyError as exc:
+                self.report.warn("DUPLICATE_KEY", f"{exc}; YAML keeps the last value", rel)
+                return load_yaml(text, allow_duplicates=True)
+        except yaml.YAMLError as exc:
             self.report.error("YAML_PARSE", str(exc).splitlines()[0], rel)
         except UnicodeDecodeError:
             self.report.error("NOT_UTF8", "file is not valid UTF-8", rel)
@@ -373,12 +494,32 @@ class _TreeValidator:
                 continue
             self.report.skills.append(name)
             if name != skill.name:
-                self.report.warn("SKILL_NAME_MISMATCH", f"name {name!r} differs from directory {skill.name!r}", rel)
-            if not SKILL_NAME.fullmatch(name):
-                self.report.warn("SKILL_NAME_FORMAT", f"{name!r} is not lowercase-hyphenated", rel)
-            if not meta.get("description"):
-                self.report.warn("SKILL_MISSING_DESCRIPTION", "frontmatter has no description", rel)
-            for script in sorted((skill / "scripts").glob("**/*.py")) if (skill / "scripts").is_dir() else []:
+                self.report.error("SKILL_NAME_MISMATCH", f"name {name!r} differs from directory {skill.name!r}", rel)
+            if len(name) > 64:
+                self.report.error("SKILL_FIELD_TOO_LONG", "name must be at most 64 characters", rel)
+            if SKILL_NAME_SNAKE.fullmatch(name) and not SKILL_NAME.fullmatch(name):
+                self.report.warn("SKILL_NAME_SNAKE_CASE", f"{name!r} needs ADK's SNAKE_CASE_SKILL_NAME feature; kebab-case always loads", rel)
+            elif not SKILL_NAME.fullmatch(name):
+                self.report.error("SKILL_NAME_FORMAT", f"{name!r} must be lowercase kebab-case (a-z, 0-9, single hyphens)", rel)
+            description = meta.get("description")
+            if not isinstance(description, str) or not description.strip():
+                self.report.error("SKILL_MISSING_DESCRIPTION", "frontmatter needs a non-empty description", rel)
+            elif len(description) > 1024:
+                self.report.error("SKILL_FIELD_TOO_LONG", "description must be at most 1024 characters", rel)
+            if isinstance(meta.get("compatibility"), str) and len(meta["compatibility"]) > 500:
+                self.report.error("SKILL_FIELD_TOO_LONG", "compatibility must be at most 500 characters", rel)
+            unknown = sorted(set(meta) - SKILL_FRONTMATTER_KEYS)
+            if unknown:
+                self.report.warn("SKILL_UNKNOWN_FRONTMATTER", f"frontmatter fields {unknown} are not in the ADK skill spec", rel)
+            scripts_dir = skill / "scripts"
+            for script in sorted(p for p in scripts_dir.rglob("*") if p.is_file()) if scripts_dir.is_dir() else []:
+                if script.suffix not in SKILL_SCRIPT_SUFFIXES:
+                    self.report.warn(
+                        "SKILL_UNSUPPORTED_SCRIPT",
+                        "run_skill_script only runs .py, .sh and .bash files",
+                        script.relative_to(self.root).as_posix(),
+                    )
+            for script in sorted(scripts_dir.glob("**/*.py")) if scripts_dir.is_dir() else []:
                 srel = script.relative_to(self.root).as_posix()
                 source = script.read_text(encoding="utf-8")
                 try:
@@ -472,7 +613,7 @@ def _looks_like_safetensors(path: Path) -> bool:
 def validate_tree(root: Path) -> Report:
     if not root.is_dir():
         report = Report()
-        report.error("NOT_A_DIRECTORY", f"{root} is not a directory")
+        report.add("NOT_A_DIRECTORY", f"{root} is not a directory")
         return report
     return _TreeValidator(root).run()
 

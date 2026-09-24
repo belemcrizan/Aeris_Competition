@@ -44,12 +44,18 @@ def _mapping_without_duplicates(loader: yaml.SafeLoader, node: yaml.MappingNode,
     return result
 
 
+class _PermissiveIncludeLoader(yaml.SafeLoader):
+    """Last duplicate key wins, as with PyYAML's SafeLoader."""
+
+
 _IncludeLoader.add_constructor("!include", _include_constructor)
 _IncludeLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapping_without_duplicates)
+_PermissiveIncludeLoader.add_constructor("!include", _include_constructor)
 
 
-def load_yaml(text: str) -> Any:
-    return yaml.load(text, Loader=_IncludeLoader)  # noqa: S506 - SafeLoader subclass
+def load_yaml(text: str, allow_duplicates: bool = False) -> Any:
+    loader = _PermissiveIncludeLoader if allow_duplicates else _IncludeLoader
+    return yaml.load(text, Loader=loader)  # noqa: S506 - SafeLoader subclass
 
 
 def load_yaml_file(path: Path) -> Any:

@@ -27,7 +27,7 @@ def iter_test_files(repo: Path):
         for filename in sorted(filenames):
             path = Path(dirpath) / filename
             rel = path.relative_to(repo).as_posix()
-            if is_test_file(rel):
+            if is_test_file(rel) and not path.is_symlink():
                 yield path, rel
 
 
@@ -82,13 +82,26 @@ def rank(repo: Path, targets: list[str]) -> list[tuple[int, str, list[str]]]:
     return ranked[:MAX_RESULTS]
 
 
+def split_repo(argv: list[str]) -> tuple[Path, list[str]]:
+    repo = Path("/workspace") if Path("/workspace").is_dir() else Path.cwd()
+    rest: list[str] = []
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--repo" and i + 1 < len(argv):
+            repo = Path(argv[i + 1])
+            i += 2
+            continue
+        if argv[i] != "--":
+            rest.append(argv[i])
+        i += 1
+    return repo, rest
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if len(argv) == 1 and " " in argv[0]:
         argv = shlex.split(argv[0])
-    repo = Path("/workspace") if Path("/workspace").is_dir() else Path.cwd()
-    if len(argv) >= 2 and argv[0] == "--repo":
-        repo, argv = Path(argv[1]), argv[2:]
+    repo, argv = split_repo(argv)
     if not argv:
         print("usage: find_tests.py [--repo PATH] TARGET [TARGET ...]", file=sys.stderr)
         return 2

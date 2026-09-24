@@ -54,11 +54,22 @@ def save_state(state: dict) -> None:
     tmp.replace(path)
 
 
-def log_event(event: str, **fields) -> None:
+def log_event(event_type: str, success: bool | None = True, **metadata) -> None:
+    # Schema: aeris_comp/telemetry.py (FIELDS).
+    record = {
+        "timestamp": round(time.time(), 3),
+        "task_id": os.environ.get("AERIS_TASK_ID"),
+        "variant": os.environ.get("AERIS_VARIANT"),
+        "event_type": event_type,
+        "duration": None,
+        "tool": "skill:ledger",
+        "success": success,
+        "metadata": metadata,
+    }
     try:
         state_dir().mkdir(parents=True, exist_ok=True)
         with (state_dir() / "events.jsonl").open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps({"ts": round(time.time(), 3), "event": event, **fields}) + "\n")
+            handle.write(json.dumps(record) + "\n")
     except OSError as exc:
         print(f"WARNING: could not write telemetry: {exc}", file=sys.stderr)
 
@@ -227,7 +238,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def normalize_argv(argv: list[str]) -> list[str]:
     if len(argv) == 1 and " " in argv[0]:
-        return shlex.split(argv[0])
+        argv = shlex.split(argv[0])
+    if "--" in argv:
+        # ADK renders dict args as "--opt value ... -- positional ...";
+        # the subcommand must come first for argparse.
+        i = argv.index("--")
+        argv = argv[i + 1 :] + argv[:i]
     return argv
 
 
@@ -275,11 +291,12 @@ def main(argv: list[str] | None = None) -> int:
         log_event("hypothesis_updated", id=args.id, weight=hyp["weight"], rejected=hyp["rejected"])
     elif args.cmd == "experiment":
         state["experiments"].append({"command": clip(args.command), "purpose": clip(args.purpose), "result": clip(args.result)})
-        log_event("experiment", command=clip(args.command))
+        log_event("tool_result", None, kind="experiment", command=clip(args.command), purpose=clip(args.purpose))
     elif args.cmd == "patch":
         files = [f.strip() for f in args.files.split(",") if f.strip()]
         state["patches"].append({"files": files, "hypothesis": args.hypothesis, "result": args.result, "note": clip(args.note)})
-        log_event("patch_attempted", files=files, hypothesis=args.hypothesis, result=args.result)
+        outcome = {"pass": True, "fail": False}.get(args.result)
+        log_event("patch_attempt", outcome, files=files, hypothesis=args.hypothesis, result=args.result, attempt=len(state["patches"]))
     elif args.cmd == "status":
         if args.budget_used is not None:
             if not 0 <= args.budget_used <= 1.5:
@@ -287,7 +304,17 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
             state["budget_used"] = args.budget_used
         assessment = assess(state)
-        log_event("budget_state", mode=assessment["mode"], level=assessment["level"], entropy=round(assessment["entropy_norm"], 3))
+        top = next(iter(assessment["weights"]), None)
+        log_event(
+            "uncertainty_state",
+            level=assessment["level"],
+            entropy=round(assessment["entropy_norm"], 3),
+            top=top,
+            top_p=round(assessment["weights"][top], 3) if top else None,
+            n_hypotheses=len(assessment["weights"]),
+            action=clip(assessment["action"]),
+        )
+        log_event("budget_status", mode=assessment["mode"], budget_used=state["budget_used"])
     save_state(state)
     print(render(state, assessment))
     return 0

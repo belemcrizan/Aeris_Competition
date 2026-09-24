@@ -22,8 +22,31 @@ def test_every_variant_builds_a_valid_archive(tmp_path, variant_id):
     out = tmp_path / "submission.zip"
     V.write_zip(stage, out)
     report = validate_zip(out)
-    assert report.ok, report.format()
+    assert report.release_ok, report.format()
     assert not report.warnings, report.format()
+
+
+def test_all_writes_release_manifest(tmp_path, capsys):
+    import importlib.util
+    import json
+
+    spec = importlib.util.spec_from_file_location("build_submission", REPO_ROOT / "scripts" / "build_submission.py")
+    build = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(build)
+    entries: list[dict] = []
+    for variant_id in ("B0", "FULL"):
+        assert build.build(variant_id, tmp_path / variant_id / "submission.zip", manifest=entries) == 0
+    path = tmp_path / "release_manifest.json"
+    build.write_manifest(entries, path)
+    capsys.readouterr()
+    manifest = json.loads(path.read_text())
+    assert manifest["model"] == V.MODEL and manifest["default_variant"] == "FULL"
+    assert [v["variant"] for v in manifest["variants"]] == ["B0", "FULL"]
+    for entry in manifest["variants"]:
+        archive = tmp_path / entry["variant"] / "submission.zip"
+        assert entry["sha256"] == build.sha256(archive)
+        assert entry["validator"] == {"result": "VALID", "errors": 0, "warnings": 0, "info": 0}
+    assert manifest["variants"][0]["skills"] == []
 
 
 def test_archive_layout_and_determinism(tmp_path):

@@ -97,6 +97,34 @@ def signature(parsed: dict) -> str:
     return hashlib.sha1("\n".join(parts).encode("utf-8")).hexdigest()[:12]
 
 
+def log_event(event_type: str, success: bool | None = None, duration: float | None = None, **metadata) -> None:
+    # Schema: aeris_comp/telemetry.py (FIELDS).
+    record = {
+        "timestamp": round(time.time(), 3),
+        "task_id": os.environ.get("AERIS_TASK_ID"),
+        "variant": os.environ.get("AERIS_VARIANT"),
+        "event_type": event_type,
+        "duration": None if duration is None else round(duration, 3),
+        "tool": "skill:testing",
+        "success": success,
+        "metadata": metadata,
+    }
+    try:
+        state_dir().mkdir(parents=True, exist_ok=True)
+        with (state_dir() / "events.jsonl").open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record) + "\n")
+    except OSError as exc:
+        print(f"WARNING: could not write telemetry: {exc}", file=sys.stderr)
+
+
+def log_outcome(args_key: str, status: str, sig: str, seen: int, elapsed: float, counts: dict | None = None) -> None:
+    log_event("test_result", status == "PASS", elapsed, args=args_key[:200], status=status, counts=counts or {})
+    if status != "PASS":
+        log_event("failure_signature", False, signature=sig, status=status, seen=seen, repeated=seen > 1)
+        if seen > 1:
+            log_event("retry", False, signature=sig, seen=seen)
+
+
 def record_history(args_key: str, sig: str, status: str) -> int:
     path = state_dir() / "test_history.json"
     try:
@@ -174,21 +202,24 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
     cmd = [sys.executable, "-m", "pytest", *PYTEST_FLAGS, *pytest_args]
+    key = " ".join(pytest_args)
+    log_event("test_start", args=key[:200], timeout=timeout)
     start = time.monotonic()
     try:
         proc = subprocess.run(cmd, cwd=repo, env=env, capture_output=True, text=True, timeout=timeout)
         raw = proc.stdout + "\n" + proc.stderr
     except subprocess.TimeoutExpired:
         elapsed = time.monotonic() - start
-        key = " ".join(pytest_args)
         seen = record_history(key, "TIMEOUT", "TIMEOUT")
+        log_outcome(key, "TIMEOUT", "TIMEOUT", seen, elapsed)
         print(f"RESULT: TIMEOUT after {elapsed:.0f}s; narrow the selection (-k, single file) or look for a hang")
         print(f"SIGNATURE: TIMEOUT  (seen {seen} times for these arguments)")
         return 0
     elapsed = time.monotonic() - start
     parsed = parse_pytest_output(raw)
     sig = signature(parsed)
-    seen = record_history(" ".join(pytest_args), sig, parsed["status"])
+    seen = record_history(key, sig, parsed["status"])
+    log_outcome(key, parsed["status"], sig, seen, elapsed, parsed["counts"])
     print(format_report(parsed, sig, seen, elapsed, raw))
     return 0
 
