@@ -3,8 +3,8 @@
   "model": "gemma-4-31b-it-qat-w4a16-ct",
   "default_variant": "FULL",
   "git": {
-    "commit": "8b30a1b9e681f7bc846b96211168228653c17aa8",
-    "dirty": true
+    "commit": "6cf9e0abf9ec5c3db887c8c09cf03b891531e479",
+    "dirty": false
   },
   "python": "3.13.3",
   "variants": [
@@ -39,6 +39,15 @@
         "ledger",
         "review"
       ],
+      "adapter": null,
+      "hashes": {
+        "agent_yaml": "5c9285a8c55d1825cdd8d583004a2a87d0417daa92f52f5d450cd384c1a4f2dc",
+        "prompts": {
+          "prompts/system.md": "ab9c8cf3f8d86c07d5083e1fe1ca64a6fb85a294d050a318dd579b278b9e7d00"
+        },
+        "sampling": "882c1b5b04283b22990d74226fe94848e178d8e59dfa20429719da8e635579b8",
+        "adapters": null
+      },
       "validator": {
         "result": "VALID",
         "errors": 0,
@@ -76,6 +85,15 @@
         "testing",
         "review"
       ],
+      "adapter": null,
+      "hashes": {
+        "agent_yaml": "1f396cc6a2f2b1ecd00804d458c0b5f5dbbbff9d0f2fb47d5fa5859584f15e4d",
+        "prompts": {
+          "prompts/system.md": "ce6bb58dfa7163bacfc661260539db3893507f0922deeae838a971c4323ae9a1"
+        },
+        "sampling": "882c1b5b04283b22990d74226fe94848e178d8e59dfa20429719da8e635579b8",
+        "adapters": null
+      },
       "validator": {
         "result": "VALID",
         "errors": 0,
@@ -113,6 +131,15 @@
         "testing",
         "review"
       ],
+      "adapter": null,
+      "hashes": {
+        "agent_yaml": "505529e073854de336d1627b0a4ef3f5e29cf5ed4a555adc6b9cb744887b1ce3",
+        "prompts": {
+          "prompts/system.md": "a8c57970a3c7e64b8d0d376185865eb1b2cb9be7b4ced25b365fe73ee253a24f"
+        },
+        "sampling": "882c1b5b04283b22990d74226fe94848e178d8e59dfa20429719da8e635579b8",
+        "adapters": null
+      },
       "validator": {
         "result": "VALID",
         "errors": 0,
@@ -151,6 +178,15 @@
         "testing",
         "review"
       ],
+      "adapter": null,
+      "hashes": {
+        "agent_yaml": "770f60ed6b014b2e0ad6e3794d87ae18a497f1e55ab6726b90858a70b6c4b495",
+        "prompts": {
+          "prompts/system.md": "30f4aab5c0ff2d93b186198f5c9884ec0250e01d2401ad32b35f7417f0eac76b"
+        },
+        "sampling": "882c1b5b04283b22990d74226fe94848e178d8e59dfa20429719da8e635579b8",
+        "adapters": null
+      },
       "validator": {
         "result": "VALID",
         "errors": 0,
@@ -190,6 +226,15 @@
         "testing",
         "review"
       ],
+      "adapter": null,
+      "hashes": {
+        "agent_yaml": "7f13dfae6b165b25232a8e82fffcfe7e924ec161ceffcdf063da76fa97fa5aeb",
+        "prompts": {
+          "prompts/system.md": "0be22f68778fb9d37a57a5613ea50b2cc07d10fa4aa2019b47ccbde226f573ed"
+        },
+        "sampling": "882c1b5b04283b22990d74226fe94848e178d8e59dfa20429719da8e635579b8",
+        "adapters": null
+      },
       "validator": {
         "result": "VALID",
         "errors": 0,
@@ -215,6 +260,15 @@
         "core"
       ],
       "skills": [],
+      "adapter": null,
+      "hashes": {
+        "agent_yaml": "9d9a7f24fcb62738c9badd6ef1ac16b15dff8b3f095a3841cbbfb9ec3a5a6b1c",
+        "prompts": {
+          "prompts/system.md": "a4136877a8722fd9cfa2e101e6ca2e2b6ee4cec4ffd6d04a98832f41934760e5"
+        },
+        "sampling": "882c1b5b04283b22990d74226fe94848e178d8e59dfa20429719da8e635579b8",
+        "adapters": null
+      },
       "validator": {
         "result": "VALID",
         "errors": 0,
@@ -245,6 +299,15 @@
       "skills": [
         "navigation"
       ],
+      "adapter": null,
+      "hashes": {
+        "agent_yaml": "be616dd8b10e8bc4d2baf031fa6f2f8e2d31cf1878f95d348513dfae632e8205",
+        "prompts": {
+          "prompts/system.md": "cb1cf8f9c73cedc9f1c0763ec762ec01decc6429a6a2b3b77f0919b9e6d48b6d"
+        },
+        "sampling": "882c1b5b04283b22990d74226fe94848e178d8e59dfa20429719da8e635579b8",
+        "adapters": null
+      },
       "validator": {
         "result": "VALID",
         "errors": 0,
@@ -278,6 +341,15 @@
       "skills": [
         "navigation"
       ],
+      "adapter": null,
+      "hashes": {
+        "agent_yaml": "b7488f1760067443b7b49a51cd5f5f688eb17dbe7e2774b3f6eb24b463f0bdd3",
+        "prompts": {
+          "prompts/system.md": "beef072be5ae1a25e99765e73718c1117304a24605ea84b237b79d1985253a12"
+        },
+        "sampling": "882c1b5b04283b22990d74226fe94848e178d8e59dfa20429719da8e635579b8",
+        "adapters": null
+      },
       "validator": {
         "result": "VALID",
         "errors": 0,
@@ -313,6 +385,15 @@
         "navigation",
         "ledger"
       ],
+      "adapter": null,
+      "hashes": {
+        "agent_yaml": "a38f2dcbe0eae7ec228be3af25fc667ace993bdbfd6947dd0b53164fc65a008a",
+        "prompts": {
+          "prompts/system.md": "c1a5ff3fb7963a7ae622e74da663eb8a0f7364f08a4b66384f0d2da5fccba3c3"
+        },
+        "sampling": "882c1b5b04283b22990d74226fe94848e178d8e59dfa20429719da8e635579b8",
+        "adapters": null
+      },
       "validator": {
         "result": "VALID",
         "errors": 0,
@@ -349,6 +430,15 @@
         "navigation",
         "ledger"
       ],
+      "adapter": null,
+      "hashes": {
+        "agent_yaml": "2e2860225180ebca5f77772931f34395f826425f6b752f482dc44a3eca0d0f8c",
+        "prompts": {
+          "prompts/system.md": "c69ae935a729c2bbdcb0515d1ba3bb92f65ef679f44f6be9226e9ca554bc9292"
+        },
+        "sampling": "882c1b5b04283b22990d74226fe94848e178d8e59dfa20429719da8e635579b8",
+        "adapters": null
+      },
       "validator": {
         "result": "VALID",
         "errors": 0,
@@ -387,6 +477,15 @@
         "ledger",
         "testing"
       ],
+      "adapter": null,
+      "hashes": {
+        "agent_yaml": "1a2bd1b062bfa58977414f6daf96b51f9108dda09a5a9264e7b8ab7af2c59d4a",
+        "prompts": {
+          "prompts/system.md": "b9788961102f479ae14b0502edbbe25e02100a25e6d51efda36426756f842a42"
+        },
+        "sampling": "882c1b5b04283b22990d74226fe94848e178d8e59dfa20429719da8e635579b8",
+        "adapters": null
+      },
       "validator": {
         "result": "VALID",
         "errors": 0,
@@ -427,6 +526,15 @@
         "testing",
         "review"
       ],
+      "adapter": null,
+      "hashes": {
+        "agent_yaml": "7820c7979879d6d4a0eb95d641eb2c91819cb8ac32f540fbdba7a443309ec95e",
+        "prompts": {
+          "prompts/system.md": "a526c748f4d34e81e9b225ec8135a8eb0213497235d98f60837c4aada218427f"
+        },
+        "sampling": "882c1b5b04283b22990d74226fe94848e178d8e59dfa20429719da8e635579b8",
+        "adapters": null
+      },
       "validator": {
         "result": "VALID",
         "errors": 0,
