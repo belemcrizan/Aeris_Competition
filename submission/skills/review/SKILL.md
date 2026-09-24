@@ -21,4 +21,6 @@ FLAGS:
 VERDICT: REVIEW (1 flags)
 ```
 
+`MATERIALIZED_SKILL_FILE` marks an untracked copy of one of these skills that the skill runtime wrote into the repository; delete those paths before submit_patch.
+
 `VERDICT: OK` means no flags. Each flag is a prompt to check, not proof of a problem; for example print( is legitimate in a CLI module.

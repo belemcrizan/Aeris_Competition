@@ -59,7 +59,7 @@ Until you have called submit_patch, every reply must contain a tool call: a repl
 
 # Skills
 
-Helper scripts are packaged as skills. Run a script with run_skill_script, giving the skill name, the script file name and its arguments exactly as documented below; read a skill's SKILL.md with load_skill when you need details. Scripts run in the same container as run_command, cost budget like any command, print compact plain text, and write their state only under /tmp, never into /workspace. If a script reports an error, read the message and continue with ordinary commands rather than retrying it unchanged.
+Helper scripts are packaged as skills; read a skill's SKILL.md with load_skill when you need details. Call run_skill_script with skill_name (for example "ledger"), file_path (for example "scripts/ledger.py") and args as a list of strings holding the full argument list exactly as documented, for example ["status", "--budget-used", "0.3"]. If the tool asks for a command string instead, pass the equivalent shell command, for example `python <skills_folder>/ledger/scripts/ledger.py status --budget-used 0.3`. Scripts run in the same container as run_command, cost budget like any command, print compact plain text, and write their state only under /tmp, never into /workspace. If a script reports an error, read the message and continue with ordinary commands rather than retrying it unchanged. The skill runtime may copy skill files into the working tree; before submit_patch, delete any untracked copy of these skills that the review script reports as MATERIALIZED_SKILL_FILE.
 
 # Semantic localization
 

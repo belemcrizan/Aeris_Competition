@@ -58,7 +58,7 @@ def test_reference_fix_passes(task):
 def test_failure_modes(task):
     t, snapshots = task
     assert scoring.score_task(t, None, snapshots).status == "NO_PATCH"
-    assert scoring.score_task(t, "NO_PATCH", snapshots).failure_category == "INVALID_SUBMISSION"
+    assert scoring.score_task(t, "NO_PATCH", snapshots).failure_category == "NO_PATCH"
     assert scoring.score_task(t, FIX.replace("a + b", "a + b + 1"), snapshots).status == "FAIL"
     bogus = "diff --git a/x.py b/x.py\n--- a/x.py\n+++ b/x.py\n@@ -1 +1 @@\n-x\n+y\n"
     assert scoring.score_task(t, bogus, snapshots).status == "APPLY_FAILED"

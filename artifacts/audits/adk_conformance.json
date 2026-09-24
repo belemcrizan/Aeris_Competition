@@ -1,0 +1,62 @@
+{
+  "adk_version": "2.9.2",
+  "agents": [
+    {
+      "errors": [],
+      "extensions": {},
+      "file": "agent.yaml",
+      "harness_provided_tools": [
+        "run_command",
+        "read_file",
+        "edit_file",
+        "write_file",
+        "submit_patch",
+        "get_status",
+        "search_similar_code",
+        "get_code_neighbors",
+        "get_code_subgraph"
+      ]
+    }
+  ],
+  "authority": "ADK (level 6); not the official harness",
+  "skills": [
+    {
+      "assets": [],
+      "problems": [],
+      "references": [],
+      "scripts": [
+        "ledger.py"
+      ],
+      "skill": "ledger"
+    },
+    {
+      "assets": [],
+      "problems": [],
+      "references": [],
+      "scripts": [
+        "find_tests.py",
+        "locate_symbol.py"
+      ],
+      "skill": "navigation"
+    },
+    {
+      "assets": [],
+      "problems": [],
+      "references": [],
+      "scripts": [
+        "review_diff.py"
+      ],
+      "skill": "review"
+    },
+    {
+      "assets": [],
+      "problems": [],
+      "references": [],
+      "scripts": [
+        "run_tests.py"
+      ],
+      "skill": "testing"
+    }
+  ],
+  "status": "PASS"
+}

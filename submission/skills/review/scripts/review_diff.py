@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+import json
+import os
 import re
 import shlex
 import subprocess
 import sys
+import time
 from pathlib import Path, PurePosixPath
 
 LARGE_DIFF_LINES = 200
@@ -22,6 +25,7 @@ DEBUG_PATTERNS = [
 SCRATCH_NAME = re.compile(
     r"(^|/)(repro\w*|reproduce\w*|debug\w*|scratch\w*|tmp\w*|test_issue\w*|test_repro\w*)\.py$|\.(orig|rej|bak|log|swp|pyc)$|(^|/)__pycache__/"
 )
+MATERIALIZED_SKILL = re.compile(r"(^|/)skills/(navigation|ledger|testing|review)/(SKILL\.md|scripts/|references/|assets/)")
 DEPENDENCY_FILES = {"pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "poetry.lock", "Pipfile", "Pipfile.lock", "tox.ini"}
 
 
@@ -60,22 +64,29 @@ def parse_diff(diff: str) -> dict[str, dict]:
     return files
 
 
-def analyze(files: dict[str, dict], untracked: dict[str, str]) -> list[tuple[str, str, str]]:
+def analyze(
+    files: dict[str, dict], untracked: dict[str, str | None], symlinks: frozenset[str] = frozenset()
+) -> list[tuple[str, str, str]]:
     flags: list[tuple[str, str, str]] = []
     all_files = dict(files)
     for name, content in untracked.items():
-        all_files.setdefault(name, {"added": content.splitlines(), "removed": [], "status": "?", "binary": False})
+        lines = content.splitlines() if content is not None else []
+        all_files.setdefault(name, {"added": lines, "removed": [], "status": "?", "binary": content is None})
     total_lines = 0
     for name, info in sorted(all_files.items()):
         total_lines += len(info["added"]) + len(info["removed"])
         base = PurePosixPath(name).name
+        if info["status"] == "?" and MATERIALIZED_SKILL.search(name):
+            flags.append(("MATERIALIZED_SKILL_FILE", name, "untracked copy of an agent skill; delete it before submit_patch"))
         if SCRATCH_NAME.search(name):
             flags.append(("SCRATCH_FILE", name, "looks like a scratch/generated file; move it to /tmp or delete it"))
         if is_test_path(name):
             flags.append(("TEST_FILE_CHANGED", name, "hidden tests are applied on top of the patch; edits here may conflict"))
         if base in DEPENDENCY_FILES:
             flags.append(("DEPENDENCY_FILE_CHANGED", name, "dependency/config file modified; keep only if the issue requires it"))
-        if info["binary"]:
+        if name in symlinks:
+            flags.append(("SYMLINK", name, "untracked symlink; it will be committed as a link, remove it unless required"))
+        elif info["binary"]:
             flags.append(("BINARY_FILE", name, "binary change in patch"))
         if info["status"] == "D":
             flags.append(("FILE_DELETED", name, "file deleted"))
@@ -103,6 +114,27 @@ def analyze(files: dict[str, dict], untracked: dict[str, str]) -> list[tuple[str
     return flags
 
 
+def log_event(success: bool, **metadata) -> None:
+    # Schema: aeris_comp/telemetry.py (FIELDS). Written outside the repository.
+    record = {
+        "timestamp": round(time.time(), 3),
+        "task_id": os.environ.get("AERIS_TASK_ID"),
+        "variant": os.environ.get("AERIS_VARIANT"),
+        "event_type": "review",
+        "duration": None,
+        "tool": "skill:review",
+        "success": success,
+        "metadata": metadata,
+    }
+    state = Path(os.environ.get("AERIS_STATE_DIR", "/tmp/aeris"))
+    try:
+        state.mkdir(parents=True, exist_ok=True)
+        with (state / "events.jsonl").open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record) + "\n")
+    except OSError as exc:
+        print(f"WARNING: could not write telemetry: {exc}", file=sys.stderr)
+
+
 def git(repo: Path, *args: str) -> str:
     # Bytes, not text mode: universal newlines would hide CRLF changes.
     proc = subprocess.run(["git", "-C", str(repo), *args], capture_output=True)
@@ -111,23 +143,34 @@ def git(repo: Path, *args: str) -> str:
     return proc.stdout.decode("utf-8", errors="replace")
 
 
-def collect(repo: Path) -> tuple[dict[str, dict], dict[str, str]]:
+def collect(repo: Path) -> tuple[dict[str, dict], dict[str, str | None], frozenset[str]]:
+    """Tracked diff, untracked files (None for binary files and symlinks), untracked symlinks.
+
+    Symlinks are never followed, so a link pointing outside the repository is not read.
+    """
     diff = git(repo, "diff", "HEAD", "--no-color", "--no-ext-diff")
-    untracked: dict[str, str] = {}
-    for line in git(repo, "status", "--porcelain", "--untracked-files=all").splitlines():
-        if line.startswith("?? "):
-            name = line[3:].strip().strip('"')
-            path = repo / name
-            if path.is_file():
-                data = path.read_bytes()[:MAX_UNTRACKED_BYTES]
-                untracked[name] = data.decode("utf-8", errors="replace")
-    return parse_diff(diff), untracked
+    untracked: dict[str, str | None] = {}
+    symlinks: set[str] = set()
+    # -z: names are NUL-terminated and never quoted or escaped.
+    for entry in git(repo, "status", "--porcelain", "-z", "--untracked-files=all").split("\0"):
+        if not entry.startswith("?? "):
+            continue
+        name = entry[3:]
+        path = repo / name
+        if path.is_symlink():
+            untracked[name] = None
+            symlinks.add(name)
+        elif path.is_file():
+            data = path.read_bytes()[:MAX_UNTRACKED_BYTES]
+            untracked[name] = None if b"\0" in data else data.decode("utf-8", errors="replace")
+    return parse_diff(diff), untracked, frozenset(symlinks)
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if len(argv) == 1 and " " in argv[0]:
         argv = shlex.split(argv[0])
+    argv = [a for a in argv if a != "--"]
     repo = Path("/workspace") if Path("/workspace").is_dir() else Path.cwd()
     if len(argv) >= 2 and argv[0] == "--repo":
         repo = Path(argv[1])
@@ -135,12 +178,12 @@ def main(argv: list[str] | None = None) -> int:
         print("usage: review_diff.py [--repo PATH]", file=sys.stderr)
         return 2
     try:
-        files, untracked = collect(repo)
+        files, untracked, symlinks = collect(repo)
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
-    flags = analyze(files, untracked)
-    added = sum(len(f["added"]) for f in files.values()) + sum(len(c.splitlines()) for c in untracked.values())
+    flags = analyze(files, untracked, symlinks)
+    added = sum(len(f["added"]) for f in files.values()) + sum(len(c.splitlines()) for c in untracked.values() if c is not None)
     removed = sum(len(f["removed"]) for f in files.values())
     print(f"DIFF: {len(files) + len(set(untracked) - set(files))} files, +{added} -{removed}")
     for name, info in sorted(files.items()):
@@ -152,6 +195,13 @@ def main(argv: list[str] | None = None) -> int:
         for code, name, message in flags:
             print(f"  {code} {name}: {message}")
     print(f"VERDICT: {'REVIEW' if flags else 'OK'} ({len(flags)} flags)")
+    log_event(
+        not flags,
+        files=len(files) + len(set(untracked) - set(files)),
+        added=added,
+        removed=removed,
+        flags=sorted({code for code, _, _ in flags}),
+    )
     return 0
 
 

@@ -24,28 +24,26 @@ PASS rate: the share of tasks whose patch makes the validation tests pass. It is
 
 ## Failure taxonomy
 
-Defined in `aeris_comp/taxonomy.py`:
+Defined in `aeris_comp/taxonomy.py`: 23 categories in 9 families. Each failed task gets one primary label (`failure_category`) and optional secondary labels (`failure_secondary`).
 
-- LOCALIZATION_FAILURE
-- ROOT_CAUSE_FAILURE
-- CONTEXT_FAILURE
-- PATCH_FAILURE
-- TEST_SELECTION_FAILURE
-- REGRESSION_FAILURE
-- TOOL_MISUSE
-- GRAPH_EXPLOSION
-- BUDGET_EXHAUSTION
-- LOOPING
-- OVER_EDITING
-- UNDER_EDITING
-- INVALID_SUBMISSION
+| Family | Categories |
+| --- | --- |
+| infrastructure | INFRASTRUCTURE_FAILURE, CONFIG_FAILURE, MODEL_LOAD_FAILURE |
+| tools | TOOL_SCHEMA_FAILURE, TOOL_MISUSE |
+| localization | LOCALIZATION_FAILURE, GRAPH_EXPLOSION, CONTEXT_FAILURE |
+| reasoning | ROOT_CAUSE_FAILURE, PREMATURE_PATCH |
+| patch | PATCH_FAILURE, SYNTAX_REGRESSION, BEHAVIOR_REGRESSION, OVER_EDITING, UNDER_EDITING |
+| validation | TEST_SELECTION_FAILURE |
+| control | REPEATED_FAILURE, LOOPING, BUDGET_EXHAUSTION, TIMEOUT |
+| submission | NO_PATCH, INVALID_SUBMISSION |
+| unknown | UNKNOWN |
 
-The scorer labels mechanical outcomes automatically:
-- NO_PATCH and APPLY_FAILED become INVALID_SUBMISSION;
-- TEST_PATCH_CONFLICT becomes OVER_EDITING.
+The old label REGRESSION_FAILURE is still accepted as an alias of BEHAVIOR_REGRESSION.
 
-Other failures are labeled from traces. A useful heuristic for LOCALIZATION_FAILURE: the files in the predicted patch do not overlap the files in the reference `patch`.
+The scorer labels mechanical outcomes automatically: NO_PATCH becomes NO_PATCH; APPLY_FAILED becomes INVALID_SUBMISSION; TEST_PATCH_CONFLICT becomes OVER_EDITING; TIMEOUT becomes TIMEOUT; SETUP_FAILED and MISSING_SNAPSHOT become INFRASTRUCTURE_FAILURE.
+
+Telemetry rules (`aeris_comp.telemetry.suggest_labels`) propose further labels; other failures are labeled from traces. A useful heuristic for LOCALIZATION_FAILURE: the files in the predicted patch do not overlap the files in the reference `patch`.
 
 ## Calibration (hypothesis H6)
 
-For tasks where the ledger was used, extract the top weight and the normalized entropy at the first patch attempt. Report AUROC against final PASS, with a bootstrap CI. Until this is measured, the weights are described only as "model-reported confidence".
+For tasks where the ledger was used, extract the top weight and the normalized entropy at the first patch attempt. Report AUROC against final PASS with a Hanley-McNeil 95% interval, plus Brier score, ECE and a reliability diagram (`aeris_comp.metrics.calibration_report`). Localization uses `localization_metrics` (Recall@k, Hit@k, MRR against the files changed by the reference patch). Until this is measured, the weights are described only as "model-reported confidence".

@@ -13,6 +13,7 @@ SKIP_DIRS = {".git", "__pycache__", ".venv", "venv", "env", "node_modules", "bui
 SOURCE_ROOTS = ("", "src", "lib")
 MAX_FALLBACK_HITS = 5
 MAX_FILE_BYTES = 2_000_000
+IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
 def resolve_module(repo: Path, parts: list[str]) -> tuple[Path, list[str]] | None:
@@ -74,8 +75,9 @@ def iter_py_files(repo: Path):
     for dirpath, dirnames, filenames in os.walk(repo):
         dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and not d.endswith(".egg-info"))
         for filename in sorted(filenames):
-            if filename.endswith(".py"):
-                yield Path(dirpath) / filename
+            path = Path(dirpath) / filename
+            if filename.endswith(".py") and not path.is_symlink():
+                yield path
 
 
 def fallback_search(repo: Path, name: str) -> list[str]:
@@ -98,6 +100,8 @@ def locate(repo: Path, symbol: str) -> list[str]:
     parts = [p for p in symbol.strip().split(".") if p]
     if not parts:
         return [f"{symbol} -> ERROR empty symbol"]
+    if not all(IDENTIFIER.fullmatch(p) for p in parts):
+        return [f"{symbol} -> ERROR not a dotted Python name (use pkg.module.Class.method)"]
     resolved = resolve_module(repo, parts)
     if resolved:
         path, rest = resolved
@@ -117,13 +121,26 @@ def locate(repo: Path, symbol: str) -> list[str]:
     return [f"{symbol} -> module not found; candidates:"] + [f"   {h}" for h in hits]
 
 
+def split_repo(argv: list[str]) -> tuple[Path, list[str]]:
+    repo = Path("/workspace") if Path("/workspace").is_dir() else Path.cwd()
+    rest: list[str] = []
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--repo" and i + 1 < len(argv):
+            repo = Path(argv[i + 1])
+            i += 2
+            continue
+        if argv[i] != "--":
+            rest.append(argv[i])
+        i += 1
+    return repo, rest
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if len(argv) == 1 and " " in argv[0]:
         argv = shlex.split(argv[0])
-    repo = Path("/workspace") if Path("/workspace").is_dir() else Path.cwd()
-    if len(argv) >= 2 and argv[0] == "--repo":
-        repo, argv = Path(argv[1]), argv[2:]
+    repo, argv = split_repo(argv)
     if not argv:
         print("usage: locate_symbol.py [--repo PATH] SYMBOL [SYMBOL ...]", file=sys.stderr)
         return 2

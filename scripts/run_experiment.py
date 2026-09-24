@@ -5,6 +5,7 @@
     score     score harness predictions locally (needs the competition dataset)
     summarize print metrics for a run
     compare   paired comparison of two runs on shared tasks
+    fidelity  agreement of our local scorer with official grades
 
 Running the agent itself requires the competition harness (HARNESS_README.md); this
 script does not simulate it.
@@ -25,8 +26,9 @@ from pathlib import Path
 import _bootstrap  # noqa: F401
 
 from aeris_comp import variants as V
-from aeris_comp.metrics import paired_comparison, summarize
+from aeris_comp.metrics import paired_comparison, scorer_agreement, summarize
 from aeris_comp.scoring import load_predictions, load_tasks, score_task
+from aeris_comp.telemetry import make_event, write_events
 from aeris_comp.validation import validate_zip
 
 RUNS_DIR = V.REPO_ROOT / "artifacts" / "runs"
@@ -64,7 +66,7 @@ def cmd_prepare(args: argparse.Namespace) -> int:
         "skills": list(resolved.skills),
         "adapter": variant.adapter,
         "submission_sha256": hashlib.sha256(zip_path.read_bytes()).hexdigest(),
-        "valid": report.ok,
+        "valid": report.release_ok,
         "git": git_state(),
         "created_at": datetime.now(UTC).isoformat(),
         "python": platform.python_version(),
@@ -75,13 +77,17 @@ def cmd_prepare(args: argparse.Namespace) -> int:
     print(f"prepared {run_dir}")
     if manifest["git"]["dirty"]:
         print("WARNING: working tree is dirty; commit before running a reportable experiment")
-    return 0 if report.ok else 1
+    return 0 if report.release_ok else 1
 
 
 def cmd_score(args: argparse.Namespace) -> int:
     tasks = load_tasks(args.tasks)
     predictions = load_predictions(args.predictions)
     ids = args.task_ids or sorted(predictions)
+    if args.split:
+        split = json.loads(args.split_file.read_text(encoding="utf-8"))
+        allowed = set(split[args.split])
+        ids = [i for i in ids if i in allowed]
     if args.limit:
         ids = ids[: args.limit]
     missing = [i for i in ids if i not in tasks]
@@ -90,6 +96,8 @@ def cmd_score(args: argparse.Namespace) -> int:
         return 2
     args.run_dir.mkdir(parents=True, exist_ok=True)
     records_path = args.run_dir / "records.jsonl"
+    manifest_path = args.run_dir / "manifest.json"
+    variant = json.loads(manifest_path.read_text(encoding="utf-8")).get("variant") if manifest_path.is_file() else None
     records = []
     with records_path.open("w", encoding="utf-8") as out:
         for instance_id in ids:
@@ -97,6 +105,16 @@ def cmd_score(args: argparse.Namespace) -> int:
             record = result.to_dict()
             records.append(record)
             out.write(json.dumps(record) + "\n")
+            event = make_event(
+                "grade_result",
+                task_id=instance_id,
+                variant=variant,
+                duration=record.get("scoring_seconds"),
+                tool="local_scorer",
+                success=result.status == "PASS",
+                metadata={"status": result.status, "failure_category": result.failure_category},
+            )
+            write_events([event], args.run_dir / "events.jsonl")
             print(f"{instance_id}: {result.status} {result.detail[:120]}")
     summary = summarize(records)
     (args.run_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
@@ -119,6 +137,12 @@ def cmd_compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_fidelity(args: argparse.Namespace) -> int:
+    report = scorer_agreement(read_records(args.ours), read_records(args.official))
+    print(json.dumps(report, indent=2))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -137,6 +161,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--python", default=sys.executable)
     p.add_argument("--timeout", type=float, default=900)
     p.add_argument("--setup-cmd", help="shell command run in the repo before tests, e.g. the dataset sandbox/setup.py")
+    p.add_argument("--split", choices=["dev", "heldout"], help="score only tasks in this part of the split")
+    p.add_argument("--split-file", type=Path, default=V.REPO_ROOT / "research" / "results" / "data_split.json")
     p.set_defaults(func=cmd_score)
     p = sub.add_parser("summarize")
     p.add_argument("run", type=Path, help="run directory or records.jsonl")
@@ -145,6 +171,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("a", type=Path)
     p.add_argument("b", type=Path)
     p.set_defaults(func=cmd_compare)
+    p = sub.add_parser("fidelity", help="agreement of our scorer with official grades on the same predictions")
+    p.add_argument("ours", type=Path, help="our records.jsonl (or run dir)")
+    p.add_argument("official", type=Path, help="official grades as records with instance_id,status")
+    p.set_defaults(func=cmd_fidelity)
     args = parser.parse_args(argv)
     try:
         return args.func(args)

@@ -12,6 +12,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SKILLS = REPO_ROOT / "submission" / "skills"
 sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(1, str(REPO_ROOT / "scripts"))
 # Importing skill scripts must not leave __pycache__ inside the shippable submission tree.
 sys.dont_write_bytecode = True
 
@@ -44,8 +45,34 @@ def make_repo(root: Path, files: dict[str, str]) -> Path:
     return root
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def state_dir(tmp_path, monkeypatch):
+    """Skill scripts write state/telemetry under AERIS_STATE_DIR; never let them hit /tmp/aeris."""
     path = tmp_path / "state"
     monkeypatch.setenv("AERIS_STATE_DIR", str(path))
+    monkeypatch.delenv("AERIS_TASK_ID", raising=False)
+    monkeypatch.delenv("AERIS_VARIANT", raising=False)
     return path
+
+
+# Test levels (docs/TESTING.md). Modules that spawn git, pytest or build archives are
+# LOCAL_INTEGRATION; OFFICIAL_HARNESS tests must be marked explicitly and skip here.
+LOCAL_INTEGRATION_MODULES = {
+    "test_build.py",
+    "test_review_and_navigation.py",
+    "test_testing_skill.py",
+    "test_scoring_and_metrics.py",
+    "test_adk_conformance.py",
+    "test_skill_runtime_contract.py",
+    "test_security_skills.py",
+}
+
+
+def pytest_collection_modifyitems(config, items):
+    for item in items:
+        if item.get_closest_marker("official_harness"):
+            item.add_marker(pytest.mark.skip(reason="needs the official competition harness (not available)"))
+        elif item.path.name in LOCAL_INTEGRATION_MODULES:
+            item.add_marker(pytest.mark.local_integration)
+        else:
+            item.add_marker(pytest.mark.unit)

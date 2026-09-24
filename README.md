@@ -13,7 +13,9 @@ Given an issue in an unfamiliar Python repository, an autonomous agent running `
 - Tools: `run_command`, `read_file`, `edit_file`, `write_file`, `submit_patch`, `get_status`, `search_similar_code`, `get_code_neighbors`, `get_code_subgraph`, plus skill scripts.
 - Scoring is PASS/FAIL per issue: the patch is applied, the task's `test_patch` is applied, and pytest runs.
 
-The full requirement matrix, with sources and status, is in [docs/COMPETITION_REQUIREMENTS.md](docs/COMPETITION_REQUIREMENTS.md). **`HARNESS_README.md` and `sample_submission/` were not accessible (they need a Kaggle login).** As a result, the YAML syntax for tool references and the way skills are attached are UNVERIFIED.
+The full requirement matrix, with sources and status, is in [docs/COMPETITION_REQUIREMENTS.md](docs/COMPETITION_REQUIREMENTS.md). **`HARNESS_README.md` and `sample_submission/` were not accessible (they need a Kaggle login).** As a result, the YAML syntax for tool references and the way skills are attached are UNVERIFIED. The closest authority we could run, google-adk 2.9.2, accepts every variant; its findings are in [docs/OFFICIAL_ARTIFACT_AUDIT.md](docs/OFFICIAL_ARTIFACT_AUDIT.md).
+
+**Project status** (computed from [docs/gaps.yaml](docs/gaps.yaml)): see [docs/STATUS.md](docs/STATUS.md) and the full ledger in [docs/GAP_CLOSURE.md](docs/GAP_CLOSURE.md).
 
 ## 3. Research hypothesis
 
@@ -52,11 +54,15 @@ submission/            source of the archive
 experiments/
   components.yaml      ablation units: tools + prompt modules + skills
   configs/*.yaml       variants: B0..B5, FULL, ABL_*
-aeris_comp/            offline tooling: validator, builder, scorer, metrics, taxonomy
-scripts/               build_submission.py, validate_submission.py, run_experiment.py
-tests/                 local unit and integration tests (no harness needed)
-docs/                  requirements, architecture, harness, experiments, submission
-research/              hypothesis, methodology, metrics, ablations, threats, results
+aeris_comp/            offline tooling: validator, builder, scorer, metrics, taxonomy,
+                       telemetry, data split, ADK conformance
+scripts/               build_submission.py, validate_submission.py, run_experiment.py,
+                       adk_conformance.py, make_split.py, make_tables.py, generate_docs.py
+tests/                 UNIT and LOCAL_INTEGRATION tests (no harness needed; docs/TESTING.md)
+docs/                  requirements, gap ledger and status, audits, validator codes, telemetry,
+                       budget, security, scorer fidelity, release, architecture, experiments
+research/              hypothesis, methodology, metrics, ablations, threats, results, paper/
+dist/release_manifest.json  hashes of every variant archive (checked by CI)
 adapters/README.md     LoRA policy (no adapter yet)
 ```
 
@@ -69,7 +75,7 @@ python scripts/build_submission.py                 # -> dist/submission.zip (FUL
 python scripts/validate_submission.py dist/submission.zip --strict
 ```
 
-`make check` runs lint, tests, the sync check, packaging and verification, where `make` is available.
+`make check` runs lint, tests, the sync and generated-docs checks, packaging and verification, where `make` is available. With `pip install google-adk==2.9.2`, `python scripts/adk_conformance.py dist/submission.zip` validates the archive with ADK's own parser and skill loader.
 
 ## 7. Experiments
 
@@ -77,16 +83,18 @@ B0 is the vanilla agent. B1 to B5 add semantic retrieval, graph navigation, hypo
 
 ## 8. Metrics
 
-The primary metric is PASS rate (with a Wilson CI). Secondary metrics are time, tool calls, changed LOC and files, retries, and exploration and validation cost. Failures are labeled with a 13-class taxonomy. See [research/metrics.md](research/metrics.md).
+The primary metric is PASS rate (with a Wilson CI). Secondary metrics are time, tool calls, changed LOC and files, retries, and exploration and validation cost. Failures get a primary and optional secondary labels from a 23-category taxonomy. Localization (Recall@k, MRR) and calibration (AUROC, Brier, ECE) metrics are implemented and tested. Skills emit telemetry in a fixed 20-event schema ([docs/TELEMETRY.md](docs/TELEMETRY.md)). See [research/metrics.md](research/metrics.md).
 
 ## 9. Submission generation
 
-`scripts/build_submission.py` stages a variant and validates the tree. It then writes a deterministic zip and validates the archive again: root layout, includes, models, tools, adapters, skills, ADK placeholders, secrets and junk files. See [docs/SUBMISSION.md](docs/SUBMISSION.md).
+`scripts/build_submission.py` stages a variant and validates the tree. It then writes a deterministic zip and validates the archive again: root layout, includes, models, tools, adapters, skills, ADK placeholders, secrets and junk files. Each issue is an ERROR (official or ADK rule), a WARNING (risky, unverified or our policy, where blocking policy checks such as secrets stop the build) or INFO; see [docs/VALIDATOR.md](docs/VALIDATOR.md) and [docs/SUBMISSION.md](docs/SUBMISSION.md).
 
 ## 10. Current results
 
 **Not yet measured.** No variant has been run against the competition harness or model. The only validated claims are local:
-- the archive builds and passes validation for all 13 variants;
+- the archive builds and passes validation for all 12 variants;
+- google-adk 2.9.2 accepts every variant's `agent.yaml` and all four skills;
+- the skill scripts work with every argument form ADK's `run_skill_script` produces, including inside ADK's own wrapper code;
 - the test suite passes.
 
 ## 11. Limitations

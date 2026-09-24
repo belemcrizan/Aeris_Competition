@@ -3,11 +3,13 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
+.venv-*/
 venv/
 .env
 .env.*
 
-dist/
+dist/*
+!dist/release_manifest.json
 artifacts/runs/*
 !artifacts/runs/.gitkeep
 

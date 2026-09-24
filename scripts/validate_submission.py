@@ -16,10 +16,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("path", type=Path, help="submission.zip or an unpacked submission directory")
     parser.add_argument("--strict", action="store_true", help="treat warnings as errors")
+    parser.add_argument(
+        "--official-only",
+        action="store_true",
+        help="fail only on OFFICIAL/ADK errors, ignoring our blocking policy checks",
+    )
     args = parser.parse_args(argv)
     report = validate_path(args.path)
     print(report.format())
-    if not report.ok or (args.strict and report.warnings):
+    if args.official_only:
+        return 0 if report.ok else 1
+    if not report.release_ok or (args.strict and report.warnings):
         return 1
     return 0
 

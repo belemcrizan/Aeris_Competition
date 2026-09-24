@@ -1,0 +1,711 @@
+# Gap ledger: the single source for docs/GAP_CLOSURE.md and docs/STATUS.md.
+# Regenerate with: python scripts/generate_docs.py   (CI runs it with --check)
+#
+# status: UNKNOWN | BLOCKED | VERIFIED | IMPLEMENTED | LOCALLY_TESTED | HARNESS_TESTED |
+#         MEASURED | REFUTED | NOT_APPLICABLE | CLOSED
+# Closed = VERIFIED, LOCALLY_TESTED, HARNESS_TESTED, MEASURED, REFUTED, NOT_APPLICABLE, CLOSED.
+# IMPLEMENTED (code exists, not yet evidenced) and UNKNOWN (open) count as open.
+# authority: level in the hierarchy (1 HARNESS_README, 2 sample_submission, 3 official
+#            schemas/eval code, 4 Kaggle pages, 5 datasets, 6 ADK, 7 our code, 8 our assumption)
+
+last_reviewed: "2026-09-24"
+
+gaps:
+  # ------------------------------------------------------------- COMPLIANCE
+  - id: C-01
+    dimension: COMPLIANCE
+    area: Official artifacts
+    gap: HARNESS_README.md not available locally
+    authority: 1
+    previous: BLOCKED
+    action: Download the competition dataset after accepting the rules; diff every R-* row against it
+    evidence: docs/OFFICIAL_ARTIFACT_AUDIT.md (workspace, remote, PyPI and web searched; nothing found)
+    test: "-"
+    status: BLOCKED
+    blocker: Kaggle login + rules acceptance (no credentials in this environment)
+    resolution: All dependent rows stay BLOCKED/UNVERIFIED
+    mandatory: true
+  - id: C-02
+    dimension: COMPLIANCE
+    area: Official artifacts
+    gap: sample_submission/ not available, so no diff against our agent.yaml
+    authority: 2
+    previous: BLOCKED
+    action: Write artifacts/audits/sample_submission_diff.md once the sample exists
+    evidence: docs/OFFICIAL_ARTIFACT_AUDIT.md
+    test: "-"
+    status: BLOCKED
+    blocker: Same as C-01
+    resolution: "-"
+    mandatory: true
+  - id: C-03
+    dimension: COMPLIANCE
+    area: Official artifacts
+    gap: Official schemas and evaluation code (adk-eval-core, swegemma) not public
+    authority: 3
+    previous: BLOCKED
+    action: Install from the competition dataset; add OFFICIAL_HARNESS tests
+    evidence: PyPI lookups failed (docs/OFFICIAL_ARTIFACT_AUDIT.md)
+    test: tests marked official_harness (always skipped today)
+    status: BLOCKED
+    blocker: Same as C-01
+    resolution: "-"
+    mandatory: true
+  - id: C-04
+    dimension: COMPLIANCE
+    area: agent.yaml schema
+    gap: agent.yaml validated only by our own validator
+    authority: 6
+    previous: IMPLEMENTED
+    action: Validate with ADK's own parser (the closest authority available)
+    evidence: artifacts/audits/adk_conformance.json (google-adk 2.9.2 AgentConfig = the model config_agent_utils validates against; PASS for all 12 variants)
+    test: tests/test_adk_conformance.py
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: ADK accepts every variant; adapter reported as competition extension
+    mandatory: true
+  - id: C-05
+    dimension: COMPLIANCE
+    area: Tools
+    gap: "Tool request syntax `tools: - name: run_command` (R-TOOLS-2)"
+    authority: 2
+    previous: UNVERIFIED
+    action: Compare with sample_submission/agent.yaml
+    evidence: ADK ToolConfig accepts it; stock ADK cannot resolve harness tool names, so the harness maps them itself (adk_conformance.json harness_provided_tools)
+    test: tests/test_adk_conformance.py
+    status: BLOCKED
+    blocker: C-02
+    resolution: Schema-valid at ADK level; name mapping is harness-specific
+    mandatory: true
+  - id: C-06
+    dimension: COMPLIANCE
+    area: Tools
+    gap: AgentTool vs agent_tool spelling (R-TOOLS-3)
+    authority: 6
+    previous: UNVERIFIED
+    action: Check in ADK 2.9.2 how each spelling resolves
+    evidence: google.adk.tools.AgentTool is a tool class; google.adk.tools.agent_tool is a module (stock ADK would reject it)
+    test: tests/test_validation.py::test_agent_tool_resolves_and_validates
+    status: NOT_APPLICABLE
+    blocker: "-"
+    resolution: We ship no subagents; validator keeps AGENT_TOOL_SPELLING as an UNVERIFIED warning
+    mandatory: false
+  - id: C-07
+    dimension: COMPLIANCE
+    area: Skills
+    gap: How skills are attached to the agent (R-SKILL-3)
+    authority: 1
+    previous: BLOCKED
+    action: Inspect ADK for YAML skill registration
+    evidence: LlmAgentConfig has no skills field and SkillToolset is not name-resolvable, so YAML cannot attach skills; the harness must discover skills/ itself
+    test: "-"
+    status: BLOCKED
+    blocker: C-01 (narrowed to auto-discovery)
+    resolution: Nothing referenced in agent.yaml, consistent with the only mechanism left
+    mandatory: true
+  - id: C-08
+    dimension: COMPLIANCE
+    area: Skills
+    gap: run_skill_script argument format
+    authority: 6
+    previous: BLOCKED
+    action: Read ADK RunSkillScriptTool; make scripts accept every form it produces
+    evidence: "ADK 2.9.2: skill_name, file_path, args (dict -> --k v before '--' positionals, or full list), short_options, positional_args; env mode takes command"
+    test: tests/test_skill_runtime_contract.py (runs our scripts inside ADK's real wrapper code)
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: All scripts accept dict, list and single-string forms; prompt documents list args
+    mandatory: true
+  - id: C-09
+    dimension: COMPLIANCE
+    area: Skills
+    gap: Skill frontmatter rules (R-SKILL-4)
+    authority: 6
+    previous: UNVERIFIED
+    action: Mirror ADK Frontmatter model and _validate_skill_dir
+    evidence: "name kebab-case <=64 (snake_case behind a feature flag), description required <=1024, name == directory"
+    test: tests/test_validator_levels.py (agrees with ADK's own validator)
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: Validator errors match ADK; snake_case is a warning
+    mandatory: true
+  - id: C-10
+    dimension: COMPLIANCE
+    area: Skills
+    gap: Skill runtime may materialize skill files inside the working tree (patch pollution)
+    authority: 6
+    previous: UNKNOWN
+    action: Detect and instruct removal
+    evidence: ADK env mode writes skills to skills_folder (default <working_dir>/skills)
+    test: tests/test_skill_runtime_contract.py::test_review_flags_materialized_skill_copies
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: review flags MATERIALIZED_SKILL_FILE; skills prompt says to delete untracked copies
+    mandatory: false
+  - id: C-11
+    dimension: COMPLIANCE
+    area: Skills
+    gap: Code-executor mode runs scripts from a temp cwd
+    authority: 6
+    previous: UNKNOWN
+    action: Resolve the repository explicitly
+    evidence: ADK wrapper chdirs into a TemporaryDirectory before runpy
+    test: tests/test_skill_runtime_contract.py::test_review_inside_real_adk_wrapper_finds_repo_despite_temp_cwd
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: Scripts default to /workspace and accept --repo
+    mandatory: false
+  - id: C-12
+    dimension: COMPLIANCE
+    area: Budget
+    gap: eval_config.yaml schema
+    authority: 1
+    previous: BLOCKED
+    action: Read HARNESS_README
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: C-01
+    resolution: Not shipped (optional file)
+    mandatory: false
+  - id: C-13
+    dimension: COMPLIANCE
+    area: Budget
+    gap: get_status output format
+    authority: 1
+    previous: BLOCKED
+    action: Observe in a harness run
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: C-01 / X-01
+    resolution: Ledger takes the budget fraction as an argument
+    mandatory: false
+  - id: C-14
+    dimension: COMPLIANCE
+    area: Budget
+    gap: Whether a reply without a tool call ends the episode (R-BUDGET-4)
+    authority: 1
+    previous: UNVERIFIED
+    action: Observe in a harness run
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-01
+    resolution: Prompt requires a tool call in every reply until submit_patch
+    mandatory: false
+  - id: C-15
+    dimension: COMPLIANCE
+    area: Context
+    gap: Context compaction behaviour
+    authority: 1
+    previous: BLOCKED
+    action: Read HARNESS_README; observe traces
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: C-01
+    resolution: Ledger state lives in /tmp and survives compaction
+    mandatory: false
+  - id: C-16
+    dimension: COMPLIANCE
+    area: Model
+    gap: Exact model string format in agent.yaml
+    authority: 2
+    previous: UNVERIFIED
+    action: Compare with sample_submission
+    evidence: String taken from the Kaggle overview (authority 4)
+    test: tests/test_validation.py::test_unsupported_model
+    status: BLOCKED
+    blocker: C-02
+    resolution: "-"
+    mandatory: true
+  - id: C-17
+    dimension: COMPLIANCE
+    area: Validator
+    gap: Validator levels must separate official invalidity from our policy
+    authority: 7
+    previous: IMPLEMENTED
+    action: Catalog every code with level, basis (OFFICIAL/ADK/POLICY/UNVERIFIED), blocking flag; add INFO
+    evidence: aeris_comp/validation.py CATALOG; docs/VALIDATOR.md
+    test: tests/test_validator_levels.py (POLICY/UNVERIFIED never ERROR; every code catalogued)
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: "9 former errors are now POLICY warnings, 6 of them blocking the build (CODE_REFERENCE, SCRIPT_SYNTAX, FORBIDDEN_FILE, POSSIBLE_SECRET, JUNK_FILE, ARCHIVE_TOO_LARGE); 3 skill warnings are now ADK errors; 2 warnings are now INFO"
+    mandatory: true
+  - id: C-18
+    dimension: COMPLIANCE
+    area: Prompts
+    gap: ADK state placeholders in instructions (R-PROMPT-1)
+    authority: 6
+    previous: UNVERIFIED
+    action: Keep the ADK_STATE_PLACEHOLDER error
+    evidence: ADK instruction templating (documented ADK behaviour)
+    test: tests/test_validation.py::test_adk_state_placeholder_in_instruction
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: "-"
+    mandatory: true
+  - id: C-19
+    dimension: COMPLIANCE
+    area: Submission format
+    gap: Archive layout, includes, traversal, symlinks, model, adapters (R-ARCH, R-INC, R-SANDBOX, R-MODEL-1, R-LORA)
+    authority: 4
+    previous: TESTED
+    action: Keep regression tests
+    evidence: docs/COMPETITION_REQUIREMENTS.md
+    test: tests/test_validation.py
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: "-"
+    mandatory: true
+
+  # ------------------------------------------------------------ ENGINEERING
+  - id: E-01
+    dimension: ENGINEERING
+    area: Tests
+    gap: Unit and local integration tests
+    authority: 7
+    previous: TESTED
+    action: Keep green; label tests by level
+    evidence: pytest (docs/TESTING.md)
+    test: tests/
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: Levels UNIT / LOCAL_INTEGRATION / OFFICIAL_HARNESS applied in conftest
+    mandatory: true
+  - id: E-02
+    dimension: ENGINEERING
+    area: Lint
+    gap: ruff check
+    authority: 7
+    previous: TESTED
+    action: Keep clean
+    evidence: make lint
+    test: CI lint step
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: "-"
+    mandatory: true
+  - id: E-03
+    dimension: ENGINEERING
+    area: Build
+    gap: Every variant builds a deterministic, valid archive
+    authority: 7
+    previous: TESTED
+    action: Keep; record hashes
+    evidence: dist/release_manifest.json
+    test: tests/test_build.py
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: "-"
+    mandatory: true
+  - id: E-04
+    dimension: ENGINEERING
+    area: Telemetry
+    gap: Event schema with the 20 required types and 8 fields
+    authority: 7
+    previous: UNKNOWN
+    action: Define schema, validate, make skills emit it
+    evidence: aeris_comp/telemetry.py; docs/TELEMETRY.md
+    test: tests/test_research_tooling.py, tests/test_skill_runtime_contract.py::test_skill_events_follow_schema
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: Skills emit 11 types, the scorer emits grade_result
+    mandatory: true
+  - id: E-05
+    dimension: ENGINEERING
+    area: Telemetry
+    gap: Harness-only events (task_start, task_end, tool_call, file_read, edit, semantic_search, graph_expansion, submit_patch)
+    authority: 1
+    previous: UNKNOWN
+    action: Convert harness traces to the schema once their format is known
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: C-01 / X-01 (trace format unknown)
+    resolution: "-"
+    mandatory: false
+  - id: E-06
+    dimension: ENGINEERING
+    area: Taxonomy
+    gap: Expanded failure taxonomy with primary and secondary labels
+    authority: 7
+    previous: IMPLEMENTED
+    action: 23 categories in families; aliases for old labels; rule-based suggestions
+    evidence: aeris_comp/taxonomy.py, aeris_comp/telemetry.py::suggest_labels
+    test: tests/test_research_tooling.py
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: "-"
+    mandatory: true
+  - id: E-07
+    dimension: ENGINEERING
+    area: Metrics
+    gap: Localization (Recall@k, Hit@k, MRR) and calibration (AUROC, Brier, ECE, reliability) metrics
+    authority: 7
+    previous: UNKNOWN
+    action: Implement with exact-value tests
+    evidence: aeris_comp/metrics.py
+    test: tests/test_research_tooling.py
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: calibration_report decides whether confidence carries signal
+    mandatory: true
+  - id: E-08
+    dimension: ENGINEERING
+    area: Data split
+    gap: Deterministic repo-stratified 70/30 split tooling
+    authority: 7
+    previous: UNKNOWN
+    action: Implement make_split / verify_split with SHA256 fingerprints
+    evidence: aeris_comp/split.py, scripts/make_split.py
+    test: tests/test_research_tooling.py
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: run_experiment.py score --split dev|heldout
+    mandatory: true
+  - id: E-09
+    dimension: ENGINEERING
+    area: Scorer
+    gap: Scorer fidelity tooling
+    authority: 7
+    previous: UNKNOWN
+    action: Agreement report vs official grades
+    evidence: run_experiment.py fidelity; docs/SCORER_FIDELITY.md
+    test: tests/test_research_tooling.py::test_scorer_agreement
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: Measurement itself is X-05
+    mandatory: true
+  - id: E-10
+    dimension: ENGINEERING
+    area: Security
+    gap: Skill-level red team (hostile names, symlinks, binary/large files, injection text, shell metacharacters)
+    authority: 7
+    previous: UNKNOWN
+    action: Add tests; fix what they find
+    evidence: docs/SECURITY_EVALUATION.md
+    test: tests/test_security_skills.py
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: Fixed review missing non-ASCII untracked names, symlink following, and a locate_symbol path escape
+    mandatory: true
+  - id: E-11
+    dimension: ENGINEERING
+    area: Security
+    gap: Agent-level prompt-injection evaluation
+    authority: 7
+    previous: UNKNOWN
+    action: Run injected-issue tasks through the model
+    evidence: docs/SECURITY_EVALUATION.md (protocol written)
+    test: "-"
+    status: BLOCKED
+    blocker: No model endpoint / harness
+    resolution: "-"
+    mandatory: false
+  - id: E-12
+    dimension: ENGINEERING
+    area: CI
+    gap: CI covers lint, tests, sync, build, docs freshness and ADK conformance
+    authority: 7
+    previous: IMPLEMENTED
+    action: Add ADK job and docs --check
+    evidence: .github/workflows/ci.yml
+    test: GitHub Actions run on the PR
+    status: IMPLEMENTED
+    blocker: "-"
+    resolution: Becomes LOCALLY_TESTED/CLOSED when the PR run is green
+    mandatory: true
+  - id: E-13
+    dimension: ENGINEERING
+    area: Budget
+    gap: Written budget policy
+    authority: 7
+    previous: UNKNOWN
+    action: Document modes, thresholds, retry limits and their evidence
+    evidence: docs/BUDGET_POLICY.md
+    test: tests/test_ledger.py
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: Thresholds are provisional until tuned on the dev split
+    mandatory: true
+
+  # ------------------------------------------------------------- EXPERIMENT
+  - id: X-01
+    dimension: EXPERIMENT
+    area: Harness
+    gap: Real harness run of B0 on one task
+    authority: 1
+    previous: BLOCKED
+    action: Run adk-eval-core/swegemma with dist/B0/submission.zip
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: Harness, dataset and Gemma 4 endpoint unavailable
+    resolution: "-"
+    mandatory: true
+  - id: X-02
+    dimension: EXPERIMENT
+    area: Harness
+    gap: First PASS (research/results/FIRST_PASS.md)
+    authority: 1
+    previous: BLOCKED
+    action: After X-01
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-01
+    resolution: "-"
+    mandatory: true
+  - id: X-03
+    dimension: EXPERIMENT
+    area: Benchmark
+    gap: Smoke benchmark (research/results/smoke_b0.json/.md)
+    authority: 1
+    previous: BLOCKED
+    action: After X-01
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-01
+    resolution: "-"
+    mandatory: true
+  - id: X-04
+    dimension: EXPERIMENT
+    area: Data split
+    gap: research/results/data_split.json
+    authority: 5
+    previous: UNKNOWN
+    action: python scripts/make_split.py --tasks <dataset tasks.jsonl>
+    evidence: "-"
+    test: make_split.py --verify
+    status: BLOCKED
+    blocker: Dataset not downloadable (C-01)
+    resolution: "-"
+    mandatory: true
+  - id: X-05
+    dimension: EXPERIMENT
+    area: Scorer
+    gap: Measured agreement of our scorer with official grades
+    authority: 3
+    previous: UNKNOWN
+    action: run_experiment.py fidelity on one scored run
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-01
+    resolution: "-"
+    mandatory: true
+  - id: X-06
+    dimension: EXPERIMENT
+    area: Variants
+    gap: B0-B5 and FULL measured
+    authority: 1
+    previous: BLOCKED
+    action: Run each frozen variant on the dev split
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-01
+    resolution: "-"
+    mandatory: true
+  - id: X-07
+    dimension: EXPERIMENT
+    area: Ablations
+    gap: Ablations (ABL_no_retrieval/graph/hypotheses/uncertainty/feedback; ABL_no_reviewer = B5)
+    authority: 1
+    previous: BLOCKED
+    action: Run on the dev split
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-01
+    resolution: "-"
+    mandatory: true
+  - id: X-08
+    dimension: EXPERIMENT
+    area: Localization
+    gap: Localization metrics measured
+    authority: 1
+    previous: UNKNOWN
+    action: Compute from traces + gold patches
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-01 / E-05
+    resolution: "-"
+    mandatory: false
+  - id: X-09
+    dimension: EXPERIMENT
+    area: Calibration
+    gap: Calibration of ledger confidence measured; decide confidence vs evidence gating
+    authority: 1
+    previous: UNKNOWN
+    action: calibration_report on dev-split patch attempts
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-06
+    resolution: Fallback rule written in docs/BUDGET_POLICY.md
+    mandatory: false
+  - id: X-10
+    dimension: EXPERIMENT
+    area: Held-out
+    gap: Held-out evaluation of the frozen final variant
+    authority: 1
+    previous: BLOCKED
+    action: Score once after the decision in docs/FINAL_VARIANT_DECISION.md
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: X-04, X-06
+    resolution: "-"
+    mandatory: true
+  - id: X-11
+    dimension: EXPERIMENT
+    area: LoRA
+    gap: LoRA adapter
+    authority: 8
+    previous: NOT_APPLICABLE
+    action: Only if failure analysis shows a trainable gap (docs/FINAL_VARIANT_DECISION.md)
+    evidence: No failure data yet
+    test: "-"
+    status: NOT_APPLICABLE
+    blocker: "-"
+    resolution: Deferred by the decision rule, not blocked
+    mandatory: false
+
+  # --------------------------------------------------------------- RESEARCH
+  - id: P-01
+    dimension: RESEARCH
+    area: Paper
+    gap: Paper skeleton (11 sections) with marked placeholders
+    authority: 7
+    previous: UNKNOWN
+    action: Write research/paper/*
+    evidence: research/paper/
+    test: "-"
+    status: IMPLEMENTED
+    blocker: "-"
+    resolution: Method, setup, limitations drafted; results sections are placeholders
+    mandatory: true
+  - id: P-02
+    dimension: RESEARCH
+    area: Paper
+    gap: Tables and figures generated from real data
+    authority: 7
+    previous: UNKNOWN
+    action: scripts/make_tables.py (refuses to run without run summaries)
+    evidence: scripts/make_tables.py
+    test: tests/test_make_tables.py
+    status: BLOCKED
+    blocker: X-06
+    resolution: Generator ready and tested on synthetic summaries
+    mandatory: true
+  - id: P-03
+    dimension: RESEARCH
+    area: Paper
+    gap: Research claim audit
+    authority: 7
+    previous: UNKNOWN
+    action: List every claim with its evidence status
+    evidence: docs/PAPER_READINESS.md
+    test: "-"
+    status: CLOSED
+    blocker: "-"
+    resolution: No claim currently has experimental support; all are marked UNSUPPORTED
+    mandatory: true
+  - id: P-04
+    dimension: RESEARCH
+    area: Paper
+    gap: Related work with verified citations
+    authority: 7
+    previous: UNKNOWN
+    action: Add only references checked against the source
+    evidence: research/paper/related_work.md (no citations yet, by design)
+    test: "-"
+    status: UNKNOWN
+    blocker: "-"
+    resolution: "-"
+    mandatory: true
+  - id: P-05
+    dimension: RESEARCH
+    area: Paper
+    gap: Paper readiness tracking against the 2026-11-12 deadline
+    authority: 4
+    previous: UNKNOWN
+    action: Dashboard with dependencies
+    evidence: docs/PAPER_READINESS.md
+    test: "-"
+    status: CLOSED
+    blocker: "-"
+    resolution: "-"
+    mandatory: false
+
+  # ---------------------------------------------------------------- RELEASE
+  - id: L-01
+    dimension: RELEASE
+    area: Release
+    gap: Release checklist
+    authority: 7
+    previous: UNKNOWN
+    action: PASS/FAIL/BLOCKED/N/A checklist
+    evidence: docs/RELEASE_CHECKLIST.md
+    test: "-"
+    status: CLOSED
+    blocker: "-"
+    resolution: "-"
+    mandatory: true
+  - id: L-02
+    dimension: RELEASE
+    area: Release
+    gap: Release manifest with hashes of every variant
+    authority: 7
+    previous: UNKNOWN
+    action: build_submission.py --all writes dist/release_manifest.json
+    evidence: dist/release_manifest.json
+    test: tests/test_build.py::test_all_writes_release_manifest
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: "-"
+    mandatory: true
+  - id: L-03
+    dimension: RELEASE
+    area: Release
+    gap: Final variant decision
+    authority: 7
+    previous: UNKNOWN
+    action: Decide from dev-split measurements with the written rule
+    evidence: docs/FINAL_VARIANT_DECISION.md
+    test: "-"
+    status: BLOCKED
+    blocker: X-06
+    resolution: Provisional default FULL, explicitly unmeasured
+    mandatory: true
+  - id: L-04
+    dimension: RELEASE
+    area: Release
+    gap: Upload to Kaggle and confirm the platform accepts the archive
+    authority: 4
+    previous: UNKNOWN
+    action: Upload dist/submission.zip
+    evidence: "-"
+    test: "-"
+    status: BLOCKED
+    blocker: Kaggle account/credentials
+    resolution: "-"
+    mandatory: true
+  - id: L-05
+    dimension: RELEASE
+    area: Release
+    gap: No secrets, credential or junk files in any archive
+    authority: 7
+    previous: TESTED
+    action: Blocking POLICY checks in the builder
+    evidence: dist/release_manifest.json (0 warnings for every variant)
+    test: tests/test_validator_levels.py::test_policy_blocker_fails_release_but_not_official
+    status: LOCALLY_TESTED
+    blocker: "-"
+    resolution: "-"
+    mandatory: true
