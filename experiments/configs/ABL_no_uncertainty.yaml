@@ -1,0 +1,3 @@
+id: ABL_no_uncertainty
+description: FULL without uncertainty gating (hypotheses are tracked but do not gate edits).
+components: [core, semantic_retrieval, graph_navigation, hypothesis_tracking, failure_feedback, reviewer]

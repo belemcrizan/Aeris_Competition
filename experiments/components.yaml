@@ -1,0 +1,41 @@
+# Switchable agent components. Order matters: prompt modules are concatenated in this
+# order, so each module may assume the modules above it are present only via `requires`.
+components:
+  core:
+    required: true
+    description: Basic issue -> inspect -> patch -> test -> submit loop (baseline B0).
+    tools: [run_command, read_file, edit_file, write_file, submit_patch, get_status]
+    prompt_modules: [core]
+
+  semantic_retrieval:
+    description: Embedding search over graph nodes to propose candidate symbols.
+    tools: [search_similar_code]
+    prompt_modules: [retrieval]
+    skills: [navigation]
+
+  graph_navigation:
+    description: Bounded call/dependency graph expansion around candidate symbols.
+    tools: [get_code_neighbors, get_code_subgraph]
+    prompt_modules: [graph]
+    skills: [navigation]
+
+  hypothesis_tracking:
+    description: Competing root-cause hypotheses kept in a compact evidence ledger.
+    prompt_modules: [hypotheses]
+    skills: [ledger]
+
+  uncertainty_gating:
+    description: Edit only when hypothesis confidence clears a budget-dependent threshold.
+    requires: [hypothesis_tracking]
+    prompt_modules: [uncertainty]
+    skills: [ledger]
+
+  failure_feedback:
+    description: Test failures parsed into signatures that update hypotheses; repeat detection.
+    prompt_modules: [feedback]
+    skills: [testing]
+
+  reviewer:
+    description: Structured pre-submission diff review.
+    prompt_modules: [review]
+    skills: [review]

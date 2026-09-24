@@ -1,0 +1,10 @@
+id: FULL
+description: All components (B5 + structured pre-submission review). Default submission.
+components:
+  - core
+  - semantic_retrieval
+  - graph_navigation
+  - hypothesis_tracking
+  - uncertainty_gating
+  - failure_feedback
+  - reviewer

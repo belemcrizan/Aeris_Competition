@@ -1,0 +1,3 @@
+id: B1
+description: B0 + semantic retrieval (search_similar_code) and symbol-to-file navigation scripts.
+components: [core, semantic_retrieval]

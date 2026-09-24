@@ -1,0 +1,3 @@
+id: ABL_no_graph
+description: FULL without graph navigation tools.
+components: [core, semantic_retrieval, hypothesis_tracking, uncertainty_gating, failure_feedback, reviewer]

@@ -1,0 +1,3 @@
+id: B2
+description: B1 + bounded graph navigation (get_code_neighbors, get_code_subgraph).
+components: [core, semantic_retrieval, graph_navigation]
