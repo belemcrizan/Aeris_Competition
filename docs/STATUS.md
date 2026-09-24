@@ -2,18 +2,29 @@
 
 # Project status
 
-Last reviewed: 2026-09-24.
+Last reviewed: 2026-09-24 (phase 3).
 
-**89.3% of currently verifiable requirements closed (25/28); 17 mandatory items blocked** by missing official artifacts (HARNESS_README, sample_submission, dataset: Kaggle access), the competition harness with a Gemma 4 endpoint, or a Kaggle account. Counting blocked items, 25 of 53 (47.2%) are closed.
+**91.7% of currently verifiable requirements closed (33/36); 25 mandatory items blocked** by missing official artifacts (HARNESS_README, sample_submission, dataset: Kaggle access), the competition harness with a Gemma 4 endpoint, or a Kaggle account. Counting blocked items, 33 of 76 (43.4%) are closed.
 
 | Dimension | Items | Closed | Open | Blocked | Closed / verifiable | Closed / all |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | COMPLIANCE | 19 | 9 | 0 | 10 | 100.0% | 47.4% |
-| ENGINEERING | 13 | 10 | 1 | 2 | 90.9% | 76.9% |
-| EXPERIMENT | 11 | 1 | 0 | 10 | 100.0% | 9.1% |
-| RESEARCH | 5 | 2 | 2 | 1 | 50.0% | 40.0% |
-| RELEASE | 5 | 3 | 0 | 2 | 100.0% | 60.0% |
-| **All** | 53 | 25 | 3 | 25 | 89.3% | 47.2% |
+| HARNESS | 6 | 2 | 1 | 3 | 66.7% | 33.3% |
+| ENGINEERING | 13 | 12 | 0 | 1 | 100.0% | 92.3% |
+| BENCHMARK | 6 | 1 | 0 | 5 | 100.0% | 16.7% |
+| EXPERIMENT | 8 | 1 | 0 | 7 | 100.0% | 12.5% |
+| OPTIMIZATION | 8 | 1 | 0 | 7 | 100.0% | 12.5% |
+| RESEARCH | 4 | 2 | 0 | 2 | 100.0% | 50.0% |
+| PAPER | 5 | 1 | 2 | 2 | 33.3% | 20.0% |
+| RELEASE | 7 | 4 | 0 | 3 | 100.0% | 57.1% |
+| **All** | 76 | 33 | 3 | 40 | 91.7% | 43.4% |
+
+## Blockers that need a human
+
+These cannot be automated (Kaggle login, rules acceptance, upload). Steps: [HUMAN_HANDOFF.md](HUMAN_HANDOFF.md). Everything else that is blocked depends on them.
+
+- C-01 (COMPLIANCE): HARNESS_README.md not available locally. Action: Accept the rules and put the dataset in external/competition/ (HUMAN_HANDOFF.md steps 1-3), then run make competition-audit.
+- L-04 (RELEASE): Upload to Kaggle and confirm the platform accepts the archive. Action: Upload dist/submission.zip on the Submit page after docs/RELEASE_CHECKLIST.md passes (HUMAN_HANDOFF.md step 6).
 
 ## Mandatory blocked items
 
@@ -23,22 +34,30 @@ Last reviewed: 2026-09-24.
 - C-05 (COMPLIANCE): Tool request syntax `tools: - name: run_command` (R-TOOLS-2). Blocked by: C-02.
 - C-07 (COMPLIANCE): How skills are attached to the agent (R-SKILL-3). Blocked by: C-01 (narrowed to auto-discovery).
 - C-16 (COMPLIANCE): Exact model string format in agent.yaml. Blocked by: C-02.
-- X-01 (EXPERIMENT): Real harness run of B0 on one task. Blocked by: Harness, dataset and Gemma 4 endpoint unavailable.
-- X-02 (EXPERIMENT): First PASS (research/results/FIRST_PASS.md). Blocked by: X-01.
-- X-03 (EXPERIMENT): Smoke benchmark (research/results/smoke_b0.json/.md). Blocked by: X-01.
-- X-04 (EXPERIMENT): research/results/data_split.json. Blocked by: Dataset not downloadable (C-01).
-- X-05 (EXPERIMENT): Measured agreement of our scorer with official grades. Blocked by: X-01.
+- X-01 (HARNESS): Real harness run of B0 on one task. Blocked by: Harness, dataset and Gemma 4 endpoint unavailable.
+- X-02 (HARNESS): First PASS (research/results/FIRST_PASS.md). Blocked by: X-01.
+- X-03 (BENCHMARK): Smoke benchmark (research/results/smoke_b0.json/.md). Blocked by: X-01.
+- X-04 (BENCHMARK): research/results/data_split.json. Blocked by: Dataset not downloadable (C-01).
+- X-05 (BENCHMARK): Measured agreement of our scorer with official grades. Blocked by: X-01.
 - X-06 (EXPERIMENT): B0-B5 and FULL measured. Blocked by: X-01.
 - X-07 (EXPERIMENT): Ablations (ABL_no_retrieval/graph/hypotheses/uncertainty/feedback; ABL_no_reviewer = B5). Blocked by: X-01.
 - X-10 (EXPERIMENT): Held-out evaluation of the frozen final variant. Blocked by: X-04, X-06.
-- P-02 (RESEARCH): Tables and figures generated from real data. Blocked by: X-06.
+- P-02 (PAPER): Tables and figures generated from real data. Blocked by: X-06.
 - L-03 (RELEASE): Final variant decision. Blocked by: X-06.
 - L-04 (RELEASE): Upload to Kaggle and confirm the platform accepts the archive. Blocked by: Kaggle account/credentials.
+- L-07 (RELEASE): RC1 passes every check including an official harness smoke run. Blocked by: X-01, L-03.
+- B-02 (BENCHMARK): Canonical B0 baseline on DEV (PASS, Wilson CI, runtime mean/median/P90, tool calls, files, LOC, tests, retries, failures). Blocked by: X-01, X-04.
+- B-03 (BENCHMARK): research/results/b0_failure_analysis.md ranking failure classes by frequency. Blocked by: B-02.
+- O-01 (OPTIMIZATION): Real per-task budget profile (elapsed, tool, model, test, graph, semantic, retry time). Blocked by: X-01, E-05.
+- O-02 (OPTIMIZATION): NORMAL / CONSERVATIVE / CRITICAL thresholds calibrated on measured consumption. Blocked by: O-01.
+- R-01 (RESEARCH): H1-H6 tested with their refutation criteria. Blocked by: X-06, X-07.
+- R-02 (RESEARCH): Component contribution map, failure-evolution matrix and Pareto frontier. Blocked by: X-07.
+- P-06 (PAPER): Results, ablations and failure-analysis sections populated with real evidence. Blocked by: X-06, X-07.
 
 ## Open items that are not blocked
 
-- E-12 (IMPLEMENTED): CI covers lint, tests, sync, build, docs freshness and ADK conformance. Next: Add ADK job and docs --check.
 - P-01 (IMPLEMENTED): Paper skeleton (11 sections) with marked placeholders. Next: Write research/paper/*.
 - P-04 (UNKNOWN): Related work with verified citations. Next: Add only references checked against the source.
+- H-03 (IMPLEMENTED): Run directory standard (manifest with hashes, events, patch, grade, timing, budget). Next: Check the layout on the first real run; add the trace converter (E-05).
 
 Full ledger: [GAP_CLOSURE.md](GAP_CLOSURE.md).

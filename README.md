@@ -75,11 +75,13 @@ python scripts/build_submission.py                 # -> dist/submission.zip (FUL
 python scripts/validate_submission.py dist/submission.zip --strict
 ```
 
+**Official artifacts** (HARNESS_README, sample submission, tasks) need a Kaggle login. Put them in `external/competition/` as described in [docs/HUMAN_HANDOFF.md](docs/HUMAN_HANDOFF.md), then run `python scripts/competition_bootstrap.py` (`make competition-audit`). It audits them, freezes the dev/held-out split and prints the next command: prepare **B0** (not FULL) for the first real harness task.
+
 `make check` runs lint, tests, the sync and generated-docs checks, packaging and verification, where `make` is available. With `pip install google-adk==2.9.2`, `python scripts/adk_conformance.py dist/submission.zip` validates the archive with ADK's own parser and skill loader.
 
 ## 7. Experiments
 
-B0 is the vanilla agent. B1 to B5 add semantic retrieval, graph navigation, hypothesis tracking, uncertainty gating and failure feedback, and FULL adds the reviewer. There are leave-one-out ablations for each component. `scripts/run_experiment.py` freezes variants (manifest with git SHA and archive hash), scores harness predictions locally, and compares runs with a paired McNemar test. See [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
+B0 is the vanilla agent and the first harness candidate: issue → inspect → reason → edit → test → `submit_patch`. B1 to B5 add one component at a time; FULL adds the reviewer. No variant after B0 is enabled until B0 has a measured baseline. `scripts/run_experiment.py` freezes variants, scores harness predictions locally, and compares runs with a paired McNemar test. See [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
 
 ## 8. Metrics
 
@@ -95,7 +97,8 @@ The primary metric is PASS rate (with a Wilson CI). Secondary metrics are time, 
 - the archive builds and passes validation for all 12 variants;
 - google-adk 2.9.2 accepts every variant's `agent.yaml` and all four skills;
 - the skill scripts work with every argument form ADK's `run_skill_script` produces, including inside ADK's own wrapper code;
-- the test suite passes.
+- the test suite passes;
+- `python scripts/competition_bootstrap.py` exits 3 until official artifacts are placed in `external/competition/`.
 
 ## 11. Limitations
 
@@ -107,13 +110,13 @@ The primary metric is PASS rate (with a Wilson CI). Secondary metrics are time, 
 
 ## 12. Roadmap
 
-1. Access the dataset: verify R-TOOLS-2, R-SKILL-3 and the `get_status` format against `HARNESS_README.md` and `sample_submission/`, and fix the rendering if needed.
-2. Check scorer fidelity: reference patches must PASS on all 129 public tasks.
-3. Phase 2: run and measure B0 on the dev split.
-4. Phases 3 to 7: B1 to B5, one component at a time, with paired comparisons.
-5. Phase 8: profile tool calls, context and test cost; optimize only observed bottlenecks.
-6. Phase 9: consider a LoRA only if the fine-tuning gate in `research/methodology.md` is met.
-7. Phase 10: frozen held-out runs, ablations, and the paper (deadline 2026-11-12).
+1. Human: accept Kaggle rules and put official artifacts in `external/competition/` ([HUMAN_HANDOFF.md](docs/HUMAN_HANDOFF.md)), then `make competition-audit`.
+2. Fix every INCOMPATIBLE finding against `sample_submission`; re-check UNVERIFIED rows.
+3. First real task: `make baseline` (B0, clean tree) and run that archive on ONE task.
+4. Smoke (5–10 deterministic dev tasks), then B0 baseline on DEV, then failure analysis.
+5. Only then B1→B5, FULL and ablations, each compared to B0 on the same tasks.
+6. Budget calibration, held-out freeze, LoRA only if the gate in `docs/FINAL_VARIANT_DECISION.md` is met.
+7. Paper from generated tables; release candidate; Kaggle upload (deadline 2026-12-02; paper 2026-11-12).
 
 ## License
 

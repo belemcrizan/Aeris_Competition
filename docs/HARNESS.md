@@ -14,7 +14,7 @@ What we know about the evaluation harness, and what we still need from `HARNESS_
 ## Unknown (blocked until the dataset is accessible)
 
 - Tool-reference syntax in `agent.yaml` and how skills are attached.
-- `run_skill_script` argument format. Our scripts accept either an argument list or one string, which they split with `shlex`.
+- Which `run_skill_script` mode the harness uses (ADK code executor vs environment `command` string). The ADK signatures themselves are known (R-SKILL-3b) and our scripts accept every form.
 - `get_status()` output format.
 - Context length and the compaction policy.
 - The `eval_config.yaml` schema.
@@ -24,6 +24,6 @@ What we know about the evaluation harness, and what we still need from `HARNESS_
 
 1. Sign in to Kaggle and accept the competition rules.
 2. `kaggle competitions download -c gemma-4-developer-agent` (22 GB; the snapshots, graphs and embeddings are most of it). Or download `HARNESS_README.md`, `sample_submission/`, `tasks.jsonl` and a few snapshots individually from the Data tab.
-3. Put them under `data/` (git-ignored) and update [COMPETITION_REQUIREMENTS.md](COMPETITION_REQUIREMENTS.md) rows R-TOOLS-2, R-SKILL-3, R-BUDGET-2 and R-BUDGET-3.
+3. Put them under `external/competition/` (git-ignored), run `python scripts/competition_bootstrap.py`, and update [COMPETITION_REQUIREMENTS.md](COMPETITION_REQUIREMENTS.md) rows R-TOOLS-2, R-SKILL-3, R-BUDGET-2 and R-BUDGET-3. Exact steps: [HUMAN_HANDOFF.md](HUMAN_HANDOFF.md).
 
 Never commit dataset files: they are covered by the competition rules.

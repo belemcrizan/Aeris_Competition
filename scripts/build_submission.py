@@ -5,6 +5,8 @@
     python scripts/build_submission.py --variant B0         # -> dist/B0/submission.zip
     python scripts/build_submission.py --sync               # refresh submission/agent.yaml + prompts/system.md
     python scripts/build_submission.py --check-sync         # fail if those files are stale
+    python scripts/build_submission.py --all --require-clean   # release manifest from a clean tree
+    python scripts/build_submission.py --check-release      # provenance + content check of the manifest
 """
 
 from __future__ import annotations
@@ -47,6 +49,24 @@ def content_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def component_hashes(stage: Path) -> dict:
+    """Per-component SHA-256 so a run can be traced to its exact prompt and sampling."""
+
+    def files(sub: str) -> dict[str, str]:
+        root = stage / sub
+        if not root.is_dir():
+            return {}
+        return {p.relative_to(stage).as_posix(): sha256(p) for p in sorted(root.rglob("*")) if p.is_file()}
+
+    sampling = stage / "configs" / "sampling.yaml"
+    return {
+        "agent_yaml": sha256(stage / "agent.yaml"),
+        "prompts": files("prompts"),
+        "sampling": sha256(sampling) if sampling.is_file() else None,
+        "adapters": files("adapters") or None,
+    }
+
+
 def build(variant_id: str, out: Path, strict: bool = False, manifest: list[dict] | None = None) -> int:
     variant = V.load_variant(variant_id)
     with tempfile.TemporaryDirectory(prefix="aeris_stage_") as tmp:
@@ -57,6 +77,7 @@ def build(variant_id: str, out: Path, strict: bool = False, manifest: list[dict]
             print(tree_report.format())
             print("build aborted: staged tree is invalid or blocked by policy", file=sys.stderr)
             return 1
+        hashes = component_hashes(stage)
         V.write_zip(stage, out)
     report = validate_zip(out)
     print(report.format())
@@ -74,6 +95,8 @@ def build(variant_id: str, out: Path, strict: bool = False, manifest: list[dict]
                 "tools": list(resolved.tools),
                 "prompt_modules": list(resolved.prompt_modules),
                 "skills": list(resolved.skills),
+                "adapter": variant.adapter,
+                "hashes": hashes,
                 "validator": {
                     "result": "VALID" if report.release_ok else "INVALID",
                     "errors": len(report.errors),
@@ -155,6 +178,33 @@ def check_manifest(path: Path) -> int:
     return 0
 
 
+def check_release(path: Path) -> int:
+    """A release manifest must come from a clean tree whose only later change is the manifest."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    commit, dirty = data["git"].get("commit"), data["git"].get("dirty")
+    problems = []
+    if dirty is not False:
+        problems.append("manifest was written from a dirty working tree")
+    if not commit:
+        problems.append("manifest has no git commit")
+    else:
+        proc = subprocess.run(["git", "diff", "--name-only", commit, "HEAD"], cwd=V.REPO_ROOT, capture_output=True, text=True)
+        if proc.returncode != 0:
+            problems.append(f"commit {commit[:12]} not available locally (fetch full history)")
+        else:
+            changed = {line for line in proc.stdout.splitlines() if line}
+            other = sorted(changed - {path.relative_to(V.REPO_ROOT).as_posix()})
+            if other:
+                problems.append(f"{len(other)} files changed since {commit[:12]}: {other[:5]}")
+    for problem in problems:
+        print(f"RELEASE: {problem}", file=sys.stderr)
+    if problems:
+        print("commit everything, then run python scripts/build_submission.py --all --require-clean and commit the manifest alone", file=sys.stderr)
+        return 1
+    print(f"release manifest provenance OK: source commit {commit[:12]}, clean")
+    return check_manifest(path)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--variant", default=V.DEFAULT_VARIANT, help=f"one of {V.list_variants()}")
@@ -168,13 +218,24 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="rebuild every variant in a temp dir and compare content hashes with dist/release_manifest.json",
     )
+    parser.add_argument("--require-clean", action="store_true", help="with --all: refuse to write the manifest from a dirty tree")
+    parser.add_argument(
+        "--check-release",
+        action="store_true",
+        help="--check-manifest plus provenance: clean source commit, nothing but the manifest changed since",
+    )
     args = parser.parse_args(argv)
     try:
         if args.sync or args.check_sync:
             return sync(check_only=args.check_sync)
         if args.check_manifest:
             return check_manifest(V.REPO_ROOT / "dist" / "release_manifest.json")
+        if args.check_release:
+            return check_release(V.REPO_ROOT / "dist" / "release_manifest.json")
         if args.all:
+            if args.require_clean and git_state()["dirty"]:
+                print("ERROR: working tree is dirty; commit first (--require-clean)", file=sys.stderr)
+                return 1
             entries: list[dict] = []
             code = max(build(v, default_out(v), args.strict, entries) for v in V.list_variants())
             write_manifest(entries, V.REPO_ROOT / "dist" / "release_manifest.json")

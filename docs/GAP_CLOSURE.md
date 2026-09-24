@@ -2,7 +2,7 @@
 
 # Gap closure ledger
 
-Last reviewed: 2026-09-24. Items: 53.
+Last reviewed: 2026-09-24 (phase 3). Items: 76.
 
 Closed means VERIFIED, LOCALLY_TESTED, HARNESS_TESTED, MEASURED, REFUTED, NOT_APPLICABLE or CLOSED. IMPLEMENTED (code exists, no evidence yet) and UNKNOWN (open) are not closed. Authority is the level in the hierarchy: 1 HARNESS_README, 2 sample_submission, 3 official schemas and evaluation code, 4 Kaggle pages, 5 datasets, 6 ADK, 7 our code, 8 our assumption.
 
@@ -10,22 +10,22 @@ Closed means VERIFIED, LOCALLY_TESTED, HARNESS_TESTED, MEASURED, REFUTED, NOT_AP
 
 | Status | Count | Share |
 | --- | ---: | ---: |
-| UNKNOWN | 1 | 1.9% |
-| BLOCKED | 25 | 47.2% |
-| IMPLEMENTED | 2 | 3.8% |
-| LOCALLY_TESTED | 20 | 37.7% |
-| NOT_APPLICABLE | 2 | 3.8% |
-| CLOSED | 3 | 5.7% |
-| **Total** | **53** | 100.0% |
+| UNKNOWN | 1 | 1.3% |
+| BLOCKED | 40 | 52.6% |
+| IMPLEMENTED | 2 | 2.6% |
+| LOCALLY_TESTED | 25 | 32.9% |
+| NOT_APPLICABLE | 2 | 2.6% |
+| CLOSED | 6 | 7.9% |
+| **Total** | **76** | 100.0% |
 
-Closed: 25 of 53 (47.2%); 25 of 28 currently verifiable items (89.3%); 25 BLOCKED.
+Closed: 33 of 76 (43.4%); 33 of 36 currently verifiable items (91.7%); 40 BLOCKED.
 
 ## COMPLIANCE
 
 | ID | Area | Gap | Authority | Previous status | Required action | Evidence | Test | Current status | Blocker | Resolution |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| C-01* | Official artifacts | HARNESS_README.md not available locally | 1 | BLOCKED | Download the competition dataset after accepting the rules; diff every R-* row against it | docs/OFFICIAL_ARTIFACT_AUDIT.md (workspace, remote, PyPI and web searched; nothing found) | - | BLOCKED | Kaggle login + rules acceptance (no credentials in this environment) | All dependent rows stay BLOCKED/UNVERIFIED |
-| C-02* | Official artifacts | sample_submission/ not available, so no diff against our agent.yaml | 2 | BLOCKED | Write artifacts/audits/sample_submission_diff.md once the sample exists | docs/OFFICIAL_ARTIFACT_AUDIT.md | - | BLOCKED | Same as C-01 | - |
+| C-01* | Official artifacts | HARNESS_README.md not available locally | 1 | BLOCKED | Download the competition dataset after accepting the rules; diff every R-* row against it | docs/OFFICIAL_ARTIFACT_AUDIT.md (workspace, remote, PyPI and web searched in phase 2; workspace plus Downloads/Documents/Desktop/OneDrive re-searched in phase 3, depth 6, for HARNESS_README*/sample_submission*/tasks.jsonl/eval_config*/gemma-4-developer*; no official files; only credential filenames, not opened; competition_bootstrap.py exits 3) | - | BLOCKED | Kaggle login + rules acceptance (no credentials in this environment) | All dependent rows stay BLOCKED/UNVERIFIED |
+| C-02* | Official artifacts | sample_submission/ not available, so no diff against our agent.yaml | 2 | BLOCKED | Write artifacts/audits/sample_submission_diff.md once the sample exists (automatic in competition_bootstrap.py) | docs/OFFICIAL_ARTIFACT_AUDIT.md; differ ready in aeris_comp/submission_diff.py | tests/test_competition_bootstrap.py (differ on synthetic samples only) | BLOCKED | Same as C-01 | - |
 | C-03* | Official artifacts | Official schemas and evaluation code (adk-eval-core, swegemma) not public | 3 | BLOCKED | Install from the competition dataset; add OFFICIAL_HARNESS tests | PyPI lookups failed (docs/OFFICIAL_ARTIFACT_AUDIT.md) | tests marked official_harness (always skipped today) | BLOCKED | Same as C-01 | - |
 | C-04* | agent.yaml schema | agent.yaml validated only by our own validator | 6 | IMPLEMENTED | Validate with ADK's own parser (the closest authority available) | artifacts/audits/adk_conformance.json (google-adk 2.9.2 AgentConfig = the model config_agent_utils validates against; PASS for all 12 variants) | tests/test_adk_conformance.py | LOCALLY_TESTED | - | ADK accepts every variant; adapter reported as competition extension |
 | C-05* | Tools | Tool request syntax `tools: - name: run_command` (R-TOOLS-2) | 2 | UNVERIFIED | Compare with sample_submission/agent.yaml | ADK ToolConfig accepts it; stock ADK cannot resolve harness tool names, so the harness maps them itself (adk_conformance.json harness_provided_tools) | tests/test_adk_conformance.py | BLOCKED | C-02 | Schema-valid at ADK level; name mapping is harness-specific |
@@ -44,6 +44,17 @@ Closed: 25 of 53 (47.2%); 25 of 28 currently verifiable items (89.3%); 25 BLOCKE
 | C-18* | Prompts | ADK state placeholders in instructions (R-PROMPT-1) | 6 | UNVERIFIED | Keep the ADK_STATE_PLACEHOLDER error | ADK instruction templating (documented ADK behaviour) | tests/test_validation.py::test_adk_state_placeholder_in_instruction | LOCALLY_TESTED | - | - |
 | C-19* | Submission format | Archive layout, includes, traversal, symlinks, model, adapters (R-ARCH, R-INC, R-SANDBOX, R-MODEL-1, R-LORA) | 4 | TESTED | Keep regression tests | docs/COMPETITION_REQUIREMENTS.md | tests/test_validation.py | LOCALLY_TESTED | - | - |
 
+## HARNESS
+
+| ID | Area | Gap | Authority | Previous status | Required action | Evidence | Test | Current status | Blocker | Resolution |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| E-05 | Telemetry | Harness-only events (task_start, task_end, tool_call, file_read, edit, semantic_search, graph_expansion, submit_patch) | 1 | UNKNOWN | Convert harness traces to the schema once their format is known | - | - | BLOCKED | C-01 / X-01 (trace format unknown) | - |
+| X-01* | Harness | Real harness run of B0 on one task | 1 | BLOCKED | Run adk-eval-core/swegemma with dist/B0/submission.zip | - | - | BLOCKED | Harness, dataset and Gemma 4 endpoint unavailable | - |
+| X-02* | Harness | First PASS (research/results/FIRST_PASS.md) | 1 | BLOCKED | After X-01 | - | - | BLOCKED | X-01 | - |
+| H-01* | Artifact intake | Detect official artifacts, audit them and print the next step without human interpretation | 7 | UNKNOWN | scripts/competition_bootstrap.py (make competition-audit) | aeris_comp/competition_artifacts.py, aeris_comp/submission_diff.py; current run exits 3 (external/competition/ absent) | tests/test_competition_bootstrap.py (synthetic artifacts only) | LOCALLY_TESTED | - | Validates our validator and ADK checker against the official sample too |
+| H-02* | Human handoff | Exact human steps to supply Kaggle artifacts without committing credentials | 7 | UNKNOWN | Write docs/HUMAN_HANDOFF.md; gitignore external/ and kaggle.json | docs/HUMAN_HANDOFF.md; .gitignore | - | CLOSED | - | - |
+| H-03* | Run artifacts | Run directory standard (manifest with hashes, events, patch, grade, timing, budget) | 7 | UNKNOWN | Check the layout on the first real run; add the trace converter (E-05) | docs/EXPERIMENTS.md (Run directory standard); run_experiment.py prepare records component hashes and supports --require-clean | - | IMPLEMENTED | - | Harness-produced files wait for E-05 |
+
 ## ENGINEERING
 
 | ID | Area | Gap | Authority | Previous status | Required action | Evidence | Test | Current status | Blocker | Resolution |
@@ -52,41 +63,71 @@ Closed: 25 of 53 (47.2%); 25 of 28 currently verifiable items (89.3%); 25 BLOCKE
 | E-02* | Lint | ruff check | 7 | TESTED | Keep clean | make lint | CI lint step | LOCALLY_TESTED | - | - |
 | E-03* | Build | Every variant builds a deterministic, valid archive | 7 | TESTED | Keep; record hashes | dist/release_manifest.json | tests/test_build.py | LOCALLY_TESTED | - | - |
 | E-04* | Telemetry | Event schema with the 20 required types and 8 fields | 7 | UNKNOWN | Define schema, validate, make skills emit it | aeris_comp/telemetry.py; docs/TELEMETRY.md | tests/test_research_tooling.py, tests/test_skill_runtime_contract.py::test_skill_events_follow_schema | LOCALLY_TESTED | - | Skills emit 11 types, the scorer emits grade_result |
-| E-05 | Telemetry | Harness-only events (task_start, task_end, tool_call, file_read, edit, semantic_search, graph_expansion, submit_patch) | 1 | UNKNOWN | Convert harness traces to the schema once their format is known | - | - | BLOCKED | C-01 / X-01 (trace format unknown) | - |
 | E-06* | Taxonomy | Expanded failure taxonomy with primary and secondary labels | 7 | IMPLEMENTED | 23 categories in families; aliases for old labels; rule-based suggestions | aeris_comp/taxonomy.py, aeris_comp/telemetry.py::suggest_labels | tests/test_research_tooling.py | LOCALLY_TESTED | - | - |
 | E-07* | Metrics | Localization (Recall@k, Hit@k, MRR) and calibration (AUROC, Brier, ECE, reliability) metrics | 7 | UNKNOWN | Implement with exact-value tests | aeris_comp/metrics.py | tests/test_research_tooling.py | LOCALLY_TESTED | - | calibration_report decides whether confidence carries signal |
 | E-08* | Data split | Deterministic repo-stratified 70/30 split tooling | 7 | UNKNOWN | Implement make_split / verify_split with SHA256 fingerprints | aeris_comp/split.py, scripts/make_split.py | tests/test_research_tooling.py | LOCALLY_TESTED | - | run_experiment.py score --split dev\|heldout |
 | E-09* | Scorer | Scorer fidelity tooling | 7 | UNKNOWN | Agreement report vs official grades | run_experiment.py fidelity; docs/SCORER_FIDELITY.md | tests/test_research_tooling.py::test_scorer_agreement | LOCALLY_TESTED | - | Measurement itself is X-05 |
 | E-10* | Security | Skill-level red team (hostile names, symlinks, binary/large files, injection text, shell metacharacters) | 7 | UNKNOWN | Add tests; fix what they find | docs/SECURITY_EVALUATION.md | tests/test_security_skills.py | LOCALLY_TESTED | - | Fixed review missing non-ASCII untracked names, symlink following, and a locate_symbol path escape |
 | E-11 | Security | Agent-level prompt-injection evaluation | 7 | UNKNOWN | Run injected-issue tasks through the model | docs/SECURITY_EVALUATION.md (protocol written) | - | BLOCKED | No model endpoint / harness | - |
-| E-12* | CI | CI covers lint, tests, sync, build, docs freshness and ADK conformance | 7 | IMPLEMENTED | Add ADK job and docs --check | .github/workflows/ci.yml | GitHub Actions run on the PR | IMPLEMENTED | - | Becomes LOCALLY_TESTED/CLOSED when the PR run is green |
+| E-12* | CI | CI covers lint, tests, sync, build, docs freshness and ADK conformance | 7 | IMPLEMENTED | Add ADK job and docs --check | .github/workflows/ci.yml; GitHub Actions run 36044360482 on main 161ef7b (jobs check and adk-conformance both success) | GitHub Actions on every push and PR | CLOSED | - | Green on main after PR |
 | E-13* | Budget | Written budget policy | 7 | UNKNOWN | Document modes, thresholds, retry limits and their evidence | docs/BUDGET_POLICY.md | tests/test_ledger.py | LOCALLY_TESTED | - | Thresholds are provisional until tuned on the dev split |
+| E-14 | Compute | Responsibility boundaries between local, Kaggle/harness and optional GCP compute | 7 | UNKNOWN | Write docs/COMPUTE_STRATEGY.md | docs/COMPUTE_STRATEGY.md | - | CLOSED | - | No GCP use; no network dependency in the agent |
+
+## BENCHMARK
+
+| ID | Area | Gap | Authority | Previous status | Required action | Evidence | Test | Current status | Blocker | Resolution |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| X-03* | Benchmark | Smoke benchmark (research/results/smoke_b0.json/.md) | 1 | BLOCKED | After X-01 | - | - | BLOCKED | X-01 | - |
+| X-04* | Data split | research/results/data_split.json | 5 | UNKNOWN | python scripts/make_split.py --tasks <dataset tasks.jsonl> | - | make_split.py --verify | BLOCKED | Dataset not downloadable (C-01) | - |
+| X-05* | Scorer | Measured agreement of our scorer with official grades | 3 | UNKNOWN | run_experiment.py fidelity on one scored run | - | - | BLOCKED | X-01 | - |
+| B-01* | Smoke selection | Deterministic smoke-task selection that avoids easy-only picks and never touches held-out | 7 | UNKNOWN | split.select_smoke; make_split.py --smoke N | aeris_comp/split.py::select_smoke | tests/test_competition_bootstrap.py::test_smoke_selection_is_deterministic_dev_only_and_spread | LOCALLY_TESTED | - | Seeded repository order, round-robin one task per repository |
+| B-02* | Baseline | Canonical B0 baseline on DEV (PASS, Wilson CI, runtime mean/median/P90, tool calls, files, LOC, tests, retries, failures) | 1 | UNKNOWN | Score B0 on the dev split; summarize | - | - | BLOCKED | X-01, X-04 | - |
+| B-03* | Failure analysis | research/results/b0_failure_analysis.md ranking failure classes by frequency | 1 | UNKNOWN | Label every B0 failure (primary + secondary) from traces; rank | - | - | BLOCKED | B-02 | The ranking decides where engineering effort goes before B1 |
 
 ## EXPERIMENT
 
 | ID | Area | Gap | Authority | Previous status | Required action | Evidence | Test | Current status | Blocker | Resolution |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| X-01* | Harness | Real harness run of B0 on one task | 1 | BLOCKED | Run adk-eval-core/swegemma with dist/B0/submission.zip | - | - | BLOCKED | Harness, dataset and Gemma 4 endpoint unavailable | - |
-| X-02* | Harness | First PASS (research/results/FIRST_PASS.md) | 1 | BLOCKED | After X-01 | - | - | BLOCKED | X-01 | - |
-| X-03* | Benchmark | Smoke benchmark (research/results/smoke_b0.json/.md) | 1 | BLOCKED | After X-01 | - | - | BLOCKED | X-01 | - |
-| X-04* | Data split | research/results/data_split.json | 5 | UNKNOWN | python scripts/make_split.py --tasks <dataset tasks.jsonl> | - | make_split.py --verify | BLOCKED | Dataset not downloadable (C-01) | - |
-| X-05* | Scorer | Measured agreement of our scorer with official grades | 3 | UNKNOWN | run_experiment.py fidelity on one scored run | - | - | BLOCKED | X-01 | - |
 | X-06* | Variants | B0-B5 and FULL measured | 1 | BLOCKED | Run each frozen variant on the dev split | - | - | BLOCKED | X-01 | - |
 | X-07* | Ablations | Ablations (ABL_no_retrieval/graph/hypotheses/uncertainty/feedback; ABL_no_reviewer = B5) | 1 | BLOCKED | Run on the dev split | - | - | BLOCKED | X-01 | - |
 | X-08 | Localization | Localization metrics measured | 1 | UNKNOWN | Compute from traces + gold patches | - | - | BLOCKED | X-01 / E-05 | - |
 | X-09 | Calibration | Calibration of ledger confidence measured; decide confidence vs evidence gating | 1 | UNKNOWN | calibration_report on dev-split patch attempts | - | - | BLOCKED | X-06 | Fallback rule written in docs/BUDGET_POLICY.md |
 | X-10* | Held-out | Held-out evaluation of the frozen final variant | 1 | BLOCKED | Score once after the decision in docs/FINAL_VARIANT_DECISION.md | - | - | BLOCKED | X-04, X-06 | - |
 | X-11 | LoRA | LoRA adapter | 8 | NOT_APPLICABLE | Only if failure analysis shows a trainable gap (docs/FINAL_VARIANT_DECISION.md) | No failure data yet | - | NOT_APPLICABLE | - | Deferred by the decision rule, not blocked |
+| X-12 | Robustness | At least 3 repetitions of B0, the best intermediate variant, FULL and the final candidate | 1 | UNKNOWN | Repeat runs; report the PASS distribution | - | - | BLOCKED | X-06 | - |
+| X-13 | Localization oracle | Pipeline issue -> retrieved -> graph-reached -> read -> edited -> gold files, to separate retrieval from reasoning failures | 1 | UNKNOWN | Build from converted traces and gold patches | - | - | BLOCKED | E-05 | - |
+
+## OPTIMIZATION
+
+| ID | Area | Gap | Authority | Previous status | Required action | Evidence | Test | Current status | Blocker | Resolution |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| O-01* | Budget | Real per-task budget profile (elapsed, tool, model, test, graph, semantic, retry time) | 1 | UNKNOWN | Extract from harness traces | - | - | BLOCKED | X-01, E-05 | - |
+| O-02* | Budget | NORMAL / CONSERVATIVE / CRITICAL thresholds calibrated on measured consumption | 1 | UNKNOWN | Replace the provisional thresholds in docs/BUDGET_POLICY.md with dev-split values | docs/BUDGET_POLICY.md (provisional) | tests/test_ledger.py | BLOCKED | O-01 | - |
+| O-03* | Loop prevention | Repeated failure signatures detected and retries bounded | 7 | IMPLEMENTED | Keep; measure the effect in B5 vs B4 | testing skill (seen count, retry event), ledger retry limit | tests/test_testing_skill.py::test_repeated_signature_detection, tests/test_ledger.py::test_retry_limit_and_repeated_failures | LOCALLY_TESTED | - | Effect on PASS unmeasured (X-06) |
+| O-04 | Early stopping | When continuing a task stops paying off (PASS per execution hour) | 1 | UNKNOWN | Study on dev traces | - | - | BLOCKED | X-06 | - |
+| O-05 | Context | Compaction experiment (does the issue, hypothesis, evidence and budget state survive?) | 1 | UNKNOWN | Force or observe compaction in the harness | - | - | BLOCKED | C-15 | - |
+| O-06 | Context | Duplicate reads, searches, graph calls and oversized outputs measured | 1 | UNKNOWN | Count from converted traces; deduplicate only if it matters | - | - | BLOCKED | E-05 | - |
+| O-07 | Prompt | Compact vs full prompt ablation | 1 | UNKNOWN | Only if B0-B5 traces show prompt-driven failures | - | - | BLOCKED | X-06 | - |
+| O-08 | Sampling | Small temperature / top_p / top_k grid on DEV, frozen before held-out | 1 | UNKNOWN | Verify supported fields first (C-16), then a small grid | - | - | BLOCKED | C-16, X-06 | - |
 
 ## RESEARCH
 
 | ID | Area | Gap | Authority | Previous status | Required action | Evidence | Test | Current status | Blocker | Resolution |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| P-03* | Paper | Research claim audit | 7 | UNKNOWN | List every claim with its evidence status | docs/PAPER_READINESS.md | - | CLOSED | - | No claim currently has experimental support; all are marked UNSUPPORTED |
+| R-01* | Hypotheses | H1-H6 tested with their refutation criteria | 1 | UNKNOWN | Evaluate after X-06 and X-07 | research/hypothesis.md (criteria only) | - | BLOCKED | X-06, X-07 | - |
+| R-02* | Analysis | Component contribution map, failure-evolution matrix and Pareto frontier | 1 | UNKNOWN | Generate from run summaries | - | - | BLOCKED | X-07 | - |
+| R-03* | Statistics | Wilson intervals and exact paired McNemar tests | 7 | IMPLEMENTED | Keep exact-value tests | aeris_comp/metrics.py | tests/test_scoring_and_metrics.py::test_wilson_and_paired_comparison | LOCALLY_TESTED | - | - |
+
+## PAPER
+
+| ID | Area | Gap | Authority | Previous status | Required action | Evidence | Test | Current status | Blocker | Resolution |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | P-01* | Paper | Paper skeleton (11 sections) with marked placeholders | 7 | UNKNOWN | Write research/paper/* | research/paper/ | - | IMPLEMENTED | - | Method, setup, limitations drafted; results sections are placeholders |
 | P-02* | Paper | Tables and figures generated from real data | 7 | UNKNOWN | scripts/make_tables.py (refuses to run without run summaries) | scripts/make_tables.py | tests/test_make_tables.py | BLOCKED | X-06 | Generator ready and tested on synthetic summaries |
-| P-03* | Paper | Research claim audit | 7 | UNKNOWN | List every claim with its evidence status | docs/PAPER_READINESS.md | - | CLOSED | - | No claim currently has experimental support; all are marked UNSUPPORTED |
 | P-04* | Paper | Related work with verified citations | 7 | UNKNOWN | Add only references checked against the source | research/paper/related_work.md (no citations yet, by design) | - | UNKNOWN | - | - |
 | P-05 | Paper | Paper readiness tracking against the 2026-11-12 deadline | 4 | UNKNOWN | Dashboard with dependencies | docs/PAPER_READINESS.md | - | CLOSED | - | - |
+| P-06* | Paper | Results, ablations and failure-analysis sections populated with real evidence | 1 | UNKNOWN | Fill from generated tables only | research/paper/ (placeholders) | - | BLOCKED | X-06, X-07 | - |
 
 ## RELEASE
 
@@ -97,5 +138,7 @@ Closed: 25 of 53 (47.2%); 25 of 28 currently verifiable items (89.3%); 25 BLOCKE
 | L-03* | Release | Final variant decision | 7 | UNKNOWN | Decide from dev-split measurements with the written rule | docs/FINAL_VARIANT_DECISION.md | - | BLOCKED | X-06 | Provisional default FULL, explicitly unmeasured |
 | L-04* | Release | Upload to Kaggle and confirm the platform accepts the archive | 4 | UNKNOWN | Upload dist/submission.zip | - | - | BLOCKED | Kaggle account/credentials | - |
 | L-05* | Release | No secrets, credential or junk files in any archive | 7 | TESTED | Blocking POLICY checks in the builder | dist/release_manifest.json (0 warnings for every variant) | tests/test_validator_levels.py::test_policy_blocker_fails_release_but_not_official | LOCALLY_TESTED | - | - |
+| L-06* | Release | Release manifest provenance (clean source commit; prompt, sampling and adapter hashes; nothing changed since) | 7 | UNKNOWN | build_submission.py --all --require-clean, commit the manifest alone, verify with --check-release | dist/release_manifest.json (git.dirty false); scripts/build_submission.py::check_release | tests/test_competition_bootstrap.py (component hashes, --require-clean, check_release) | LOCALLY_TESTED | - | - |
+| L-07* | Release candidate | RC1 passes every check including an official harness smoke run | 1 | UNKNOWN | Run docs/RELEASE_CHECKLIST.md on the frozen variant; reject and rebuild on any failure | - | - | BLOCKED | X-01, L-03 | - |
 
 `*` marks mandatory items.

@@ -24,6 +24,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
+from build_submission import component_hashes
 
 from aeris_comp import variants as V
 from aeris_comp.metrics import paired_comparison, scorer_agreement, summarize
@@ -44,6 +45,9 @@ def git_state() -> dict:
 
 def cmd_prepare(args: argparse.Namespace) -> int:
     variant = V.load_variant(args.variant)
+    if args.require_clean and git_state()["dirty"]:
+        print("ERROR: working tree is dirty; a reportable run must be reconstructible (commit first)", file=sys.stderr)
+        return 2
     run_id = args.run_id or f"{datetime.now(UTC):%Y%m%dT%H%M%SZ}_{variant.id}"
     run_dir = RUNS_DIR / run_id
     if run_dir.exists():
@@ -53,6 +57,7 @@ def cmd_prepare(args: argparse.Namespace) -> int:
     with tempfile.TemporaryDirectory(prefix="aeris_stage_") as tmp:
         stage = Path(tmp) / "submission"
         resolved = V.stage(variant, stage)
+        hashes = component_hashes(stage)
         zip_path = run_dir / "submission.zip"
         V.write_zip(stage, zip_path)
     report = validate_zip(zip_path)
@@ -66,6 +71,7 @@ def cmd_prepare(args: argparse.Namespace) -> int:
         "skills": list(resolved.skills),
         "adapter": variant.adapter,
         "submission_sha256": hashlib.sha256(zip_path.read_bytes()).hexdigest(),
+        "hashes": hashes,
         "valid": report.release_ok,
         "git": git_state(),
         "created_at": datetime.now(UTC).isoformat(),
@@ -150,6 +156,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--variant", required=True)
     p.add_argument("--run-id")
     p.add_argument("--notes")
+    p.add_argument("--require-clean", action="store_true", help="refuse to prepare from a dirty working tree")
     p.set_defaults(func=cmd_prepare)
     p = sub.add_parser("score")
     p.add_argument("--run-dir", type=Path, required=True)

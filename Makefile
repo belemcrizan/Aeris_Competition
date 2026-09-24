@@ -1,7 +1,7 @@
 PYTHON ?= python
 VARIANT ?= FULL
 
-.PHONY: setup lint test test-unit test-integration validate-config package package-all verify-submission sync docs adk-conformance baseline check
+.PHONY: setup lint test test-unit test-integration validate-config package package-all verify-submission sync docs adk-conformance baseline competition-audit release-manifest check-release check
 
 setup:
 	$(PYTHON) -m pip install -r requirements-dev.txt
@@ -45,6 +45,18 @@ verify-submission:
 
 # Prepares a frozen baseline run directory; running it needs the competition harness.
 baseline:
-	$(PYTHON) scripts/run_experiment.py prepare --variant B0
+	$(PYTHON) scripts/run_experiment.py prepare --variant B0 --require-clean
+
+# Detects official artifacts in external/competition/ (docs/HUMAN_HANDOFF.md), audits them
+# and prints the next command. Exit 3 means artifacts are still missing.
+competition-audit:
+	$(PYTHON) scripts/competition_bootstrap.py
+
+# Release manifest from a clean tree; commit dist/release_manifest.json on its own afterwards.
+release-manifest:
+	$(PYTHON) scripts/build_submission.py --all --strict --require-clean
+
+check-release:
+	$(PYTHON) scripts/build_submission.py --check-release
 
 check: lint test validate-config package verify-submission

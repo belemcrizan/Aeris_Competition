@@ -65,6 +65,7 @@ LOCAL_INTEGRATION_MODULES = {
     "test_adk_conformance.py",
     "test_skill_runtime_contract.py",
     "test_security_skills.py",
+    "test_competition_bootstrap.py",
 }
 
 

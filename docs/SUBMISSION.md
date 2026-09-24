@@ -58,5 +58,5 @@ Checks performed (codes appear in the output):
 
 1. Run `python -m pytest`.
 2. Run `python scripts/build_submission.py --strict`.
-3. Compare `dist/submission.zip` against `sample_submission/` from the dataset. R-TOOLS-2 and R-SKILL-3 are unverified until this is done.
+3. Put official artifacts in `external/competition/` and run `python scripts/competition_bootstrap.py`. It writes `artifacts/audits/sample_submission_diff.md` (B0 and FULL vs the sample). Fix every INCOMPATIBLE finding. R-TOOLS-2 and R-SKILL-3 stay UNVERIFIED until that file exists.
 4. Record the SHA-256 printed by the build alongside the Kaggle submission.

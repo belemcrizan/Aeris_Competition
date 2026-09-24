@@ -3,6 +3,7 @@
 
     python scripts/make_split.py --tasks data/tasks.jsonl
     python scripts/make_split.py --tasks data/tasks.jsonl --verify
+    python scripts/make_split.py --tasks data/tasks.jsonl --smoke 8
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ from pathlib import Path
 import _bootstrap  # noqa: F401
 
 from aeris_comp.scoring import load_tasks
-from aeris_comp.split import DEFAULT_DEV_FRACTION, DEFAULT_SEED, make_split, verify_split
+from aeris_comp.split import DEFAULT_DEV_FRACTION, DEFAULT_SEED, make_split, select_smoke, verify_split
 
 DEFAULT_OUT = Path(__file__).resolve().parents[1] / "research" / "results" / "data_split.json"
 
@@ -27,8 +28,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dev-fraction", type=float, default=DEFAULT_DEV_FRACTION)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--verify", action="store_true", help="check an existing split instead of writing one")
+    parser.add_argument("--smoke", type=int, metavar="N", help="write N dev tasks for the smoke benchmark to research/results/smoke_selection.json")
     args = parser.parse_args(argv)
     tasks = list(load_tasks(args.tasks).values())
+    if args.smoke:
+        split = json.loads(args.out.read_text(encoding="utf-8"))
+        problems = verify_split(split, tasks)
+        if problems:
+            print(f"split invalid: {problems}", file=sys.stderr)
+            return 1
+        selection = select_smoke(tasks, split, args.smoke, args.seed)
+        target = args.out.parent / "smoke_selection.json"
+        target.write_text(json.dumps(selection, indent=1) + "\n", encoding="utf-8")
+        print(f"smoke tasks ({selection['n']}): {' '.join(selection['task_ids'])} -> {target}")
+        return 0
     if args.verify:
         problems = verify_split(json.loads(args.out.read_text(encoding="utf-8")), tasks)
         for problem in problems:
