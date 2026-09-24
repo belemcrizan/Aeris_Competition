@@ -1,0 +1,3 @@
+id: ABL_no_retrieval
+description: FULL without semantic retrieval. Graph expansion must start from grep-located symbols.
+components: [core, graph_navigation, hypothesis_tracking, uncertainty_gating, failure_feedback, reviewer]

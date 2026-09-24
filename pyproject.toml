@@ -1,0 +1,23 @@
+[project]
+name = "aeris-competition"
+version = "0.1.0"
+description = "Offline tooling and declarative agent for the Google Gemma 4 Developer Agent Competition"
+requires-python = ">=3.11"
+dependencies = ["pyyaml>=6.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+parquet = ["pyarrow>=15"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q -p no:cacheprovider"
+markers = ["harness: needs the real competition harness (none exist yet)"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]

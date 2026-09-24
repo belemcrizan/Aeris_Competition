@@ -1,0 +1,3 @@
+id: B0
+description: Vanilla agent. Shell, file tools and tests only; no retrieval, graph, ledger or skills.
+components: [core]

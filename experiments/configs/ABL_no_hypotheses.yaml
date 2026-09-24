@@ -1,0 +1,3 @@
+id: ABL_no_hypotheses
+description: FULL without hypothesis tracking. Uncertainty gating depends on it, so it is removed too.
+components: [core, semantic_retrieval, graph_navigation, failure_feedback, reviewer]

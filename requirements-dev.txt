@@ -1,0 +1,4 @@
+# PyYAML parses agent configs; pytest runs the local test suite; ruff lints.
+pyyaml>=6.0
+pytest>=8.0
+ruff>=0.6

@@ -1,0 +1,5 @@
+# Google's recommended Gemma 4 sampling defaults. Not tuned for this task yet; sampling is
+# an experiment parameter (see research/methodology.md) and must be changed via a variant.
+temperature: 1.0
+top_p: 0.95
+top_k: 64
